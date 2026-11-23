@@ -125,27 +125,14 @@
 
   function buildPage() {
     root.textContent = '';
-    const step = (n, t, d) => h('div', { class: 'step' }, h('span', { class: 'n' }, n), h('div', {}, h('b', {}, t), h('span', {}, d)));
     root.append(
-      h('section', { class: 'steps', 'aria-label': 'How the team uses this' },
-        step(1, 'Submit a vendor', 'Fill in the form or import a file'),
-        step(2, 'Checks run live', 'Seven stages, each one visible'),
-        step(3, 'Act on the decision', 'Approved, pending or rejected, with reasons and drafted emails')),
       h('div', { class: 'workspace' }, buildFormPanel(), buildRunPanel()),
-      buildCasesPanel(),
-      buildHow());
+      buildCasesPanel());
     buildStages(); renderSpeed(); renderCases();
   }
 
   /* ----- form panel ----- */
   function buildFormPanel() {
-    refs.sample = h('select', { class: 'select', 'aria-label': 'Load a sample vendor' },
-      h('option', { value: '' }, 'Load a sample…'),
-      h('optgroup', { label: 'Should be approved' }, SCN.filter((s) => s.kind === 'happy').map((s) => h('option', { value: s.key }, s.label))),
-      h('optgroup', { label: 'Edge cases' }, SCN.filter((s) => s.kind === 'edge').map((s) => h('option', { value: s.key }, s.label))),
-      h('optgroup', { label: 'Bonus' }, SCN.filter((s) => s.kind === 'bonus').map((s) => h('option', { value: s.key }, s.label))));
-    refs.sample.addEventListener('change', () => { if (refs.sample.value) loadScenario(refs.sample.value); refs.sample.value = ''; });
-
     const fileInput = h('input', { type: 'file', accept: '.json,application/json', class: 'sr', id: 'file-in', onchange: (e) => {
       const f = e.target.files[0]; if (!f) return;
       const rd = new FileReader();
@@ -169,9 +156,9 @@
 
     return h('section', { class: 'panel form-panel', 'aria-label': 'New vendor submission' },
       h('div', { class: 'panel-h' }, h('h2', {}, 'New vendor submission')),
-      h('div', { class: 'toolbar' }, refs.sample,
+      h('div', { class: 'toolbar' },
         h('label', { class: 'btn sm', for: 'file-in', tabindex: '0', role: 'button', onkeydown: (e) => { if (e.key === 'Enter') fileInput.click(); } }, 'Import JSON'), fileInput,
-        h('button', { class: 'btn sm', type: 'button', onclick: () => setEditor(blankSubmission(), { key: 'custom', parent: null, resetScroll: true }) }, 'Clear')),
+        h('button', { class: 'btn sm', type: 'button', onclick: () => setEditor(blankSubmission(), { key: 'custom', parent: null, resetScroll: true }) }, 'Clear form')),
       refs.note, refs.formScroll,
       h('div', { class: 'panel-f' }, refs.parentBanner, refs.runBtn));
   }
@@ -194,7 +181,7 @@
   function renderNote() {
     const sc = SCN.find((x) => x.key === state.scenarioKey);
     refs.note.className = 'hint';
-    refs.note.textContent = sc ? `Sample: ${sc.short}${state.modified ? ' (edited)' : ''}` : 'Fill in the vendor’s details. Anything left empty is flagged.';
+    refs.note.textContent = sc ? 'Fill in the vendor’s details. Anything left empty is flagged.' : 'Fill in the vendor’s details. Anything left empty is flagged.';
   }
   function syncFromForm() {
     state.editorText = JSON.stringify(formObj, null, 2); state.modified = true;
@@ -399,10 +386,7 @@
         h('section', { class: 'alert ' + gt }, h('h3', { class: 'alert-h' }, title), h('div', { class: 'flags' }, list.flatMap((x) => flagsOf(x)).map((f) => flagRow(f, gt)))))));
     }
     if (d.status === 'pending') {
-      const sc = SCN.find((x) => x.key === rec.scenarioKey);
-      const btns = [];
-      if (d.sub === 'awaiting_vendor' && sc && sc.corrected) btns.push(h('button', { class: 'btn primary', type: 'button', onclick: () => resubmit(rec, true) }, 'Simulate the vendor’s corrected reply'));
-      btns.push(h('button', { class: 'btn', type: 'button', onclick: () => resubmit(rec, false) }, 'Fix and resubmit'));
+      const btns = [h('button', { class: 'btn primary', type: 'button', onclick: () => resubmit(rec, false) }, 'Fix and resubmit')];
       nodes.push(h('div', { class: 'sect' }, h('div', { class: 'actions' }, btns)));
     }
 
@@ -462,7 +446,7 @@
         const d = c.result.decision, first = c.result.findings.find((f) => f.status === 'fail') || c.result.findings.find((f) => f.status === 'warn');
         const open = () => openDrawer(c.caseId);
         return h('tr', { tabindex: '0', onclick: open, onkeydown: (e) => { if (e.key === 'Enter') open(); } },
-          h('td', {}, h('span', { class: 'chip' }, c.caseId), c.attempt > 1 ? h('span', { class: 'tag' }, 'attempt ' + c.attempt) : null, c.seed ? h('span', { class: 'tag' }, 'sample') : null),
+          h('td', {}, h('span', { class: 'chip' }, c.caseId), c.attempt > 1 ? h('span', { class: 'tag' }, 'attempt ' + c.attempt) : null, null),
           h('td', {}, vendorName(c)), h('td', {}, statusPill(d)),
           h('td', { class: 'cell-main' }, d.status === 'approved' ? (d.sub === 'with_notes' ? 'Passed, with notes' : 'All checks passed') : first ? first.title : 'All checks passed'),
           h('td', { class: 'muted' }, fmtWhen(c.receivedAt)));

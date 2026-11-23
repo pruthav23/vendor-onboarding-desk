@@ -14,9 +14,9 @@
    live run and result on the right), then the case history. White surfaces on a pale yellow page,
    yellow for action and selection, green / orange / red only for outcomes. Light theme by choice. */
 :root {
-  --bg: #FFFBEA; --surface: #FFFFFF; --surface-2: #FBF7E6; --ink: #1B1A14; --ink-2: #4D4936; --ink-3: #6F6A52;
-  --line: #E9E0B9; --line-2: #F3ECCD; --accent: #FFC700; --accent-hover: #F2BA00; --accent-edge: #DDAA00; --accent-ink: #1B1A14;
-  --accent-soft: #FFF3BF; --accent-text: #7A5C00;
+  --bg: #F6F0D6; --surface: #FFFCF0; --surface-2: #F8F2DD; --ink: #1B1A14; --ink-2: #4D4936; --ink-3: #6F6A52;
+  --line: #E4DAAE; --line-2: #EEE6C4; --accent: #FFC700; --accent-hover: #F2BA00; --accent-edge: #DDAA00; --accent-ink: #1B1A14;
+  --accent-soft: #FBEFB5; --accent-text: #7A5C00;
   --ok: #17784A; --ok-bg: #E3F4EA; --warn: #B45309; --warn-bg: #FFEBD6; --bad: #B42318; --bad-bg: #FDE7E4;
   --shadow: 0 1px 2px rgba(60,48,0,.06), 0 8px 24px rgba(60,48,0,.06);
   --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -77,7 +77,7 @@ button { cursor: pointer; }
 .select, .fld input, .fld select { padding: 7px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: 13.5px; }
 .select { padding: 5px 9px; font-size: 13px; max-width: 100%; }
 .fld input, .fld select { width: 100%; background: var(--surface-2); }
-.fld input:focus, .fld select:focus { outline: 2px solid var(--accent-edge); outline-offset: 0; background: #fff; }
+.fld input:focus, .fld select:focus { outline: 2px solid var(--accent-edge); outline-offset: 0; background: var(--surface); }
 .fld input::placeholder { color: #A8A285; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { background: none; border: 0; padding: 4px 11px; font-size: 12.5px; color: var(--ink-2); }
@@ -1073,27 +1073,14 @@ if (typeof module !== 'undefined') module.exports = Data;
 
   function buildPage() {
     root.textContent = '';
-    const step = (n, t, d) => h('div', { class: 'step' }, h('span', { class: 'n' }, n), h('div', {}, h('b', {}, t), h('span', {}, d)));
     root.append(
-      h('section', { class: 'steps', 'aria-label': 'How the team uses this' },
-        step(1, 'Submit a vendor', 'Fill in the form or import a file'),
-        step(2, 'Checks run live', 'Seven stages, each one visible'),
-        step(3, 'Act on the decision', 'Approved, pending or rejected, with reasons and drafted emails')),
       h('div', { class: 'workspace' }, buildFormPanel(), buildRunPanel()),
-      buildCasesPanel(),
-      buildHow());
+      buildCasesPanel());
     buildStages(); renderSpeed(); renderCases();
   }
 
   /* ----- form panel ----- */
   function buildFormPanel() {
-    refs.sample = h('select', { class: 'select', 'aria-label': 'Load a sample vendor' },
-      h('option', { value: '' }, 'Load a sample…'),
-      h('optgroup', { label: 'Should be approved' }, SCN.filter((s) => s.kind === 'happy').map((s) => h('option', { value: s.key }, s.label))),
-      h('optgroup', { label: 'Edge cases' }, SCN.filter((s) => s.kind === 'edge').map((s) => h('option', { value: s.key }, s.label))),
-      h('optgroup', { label: 'Bonus' }, SCN.filter((s) => s.kind === 'bonus').map((s) => h('option', { value: s.key }, s.label))));
-    refs.sample.addEventListener('change', () => { if (refs.sample.value) loadScenario(refs.sample.value); refs.sample.value = ''; });
-
     const fileInput = h('input', { type: 'file', accept: '.json,application/json', class: 'sr', id: 'file-in', onchange: (e) => {
       const f = e.target.files[0]; if (!f) return;
       const rd = new FileReader();
@@ -1117,9 +1104,9 @@ if (typeof module !== 'undefined') module.exports = Data;
 
     return h('section', { class: 'panel form-panel', 'aria-label': 'New vendor submission' },
       h('div', { class: 'panel-h' }, h('h2', {}, 'New vendor submission')),
-      h('div', { class: 'toolbar' }, refs.sample,
+      h('div', { class: 'toolbar' },
         h('label', { class: 'btn sm', for: 'file-in', tabindex: '0', role: 'button', onkeydown: (e) => { if (e.key === 'Enter') fileInput.click(); } }, 'Import JSON'), fileInput,
-        h('button', { class: 'btn sm', type: 'button', onclick: () => setEditor(blankSubmission(), { key: 'custom', parent: null, resetScroll: true }) }, 'Clear')),
+        h('button', { class: 'btn sm', type: 'button', onclick: () => setEditor(blankSubmission(), { key: 'custom', parent: null, resetScroll: true }) }, 'Clear form')),
       refs.note, refs.formScroll,
       h('div', { class: 'panel-f' }, refs.parentBanner, refs.runBtn));
   }
@@ -1142,7 +1129,7 @@ if (typeof module !== 'undefined') module.exports = Data;
   function renderNote() {
     const sc = SCN.find((x) => x.key === state.scenarioKey);
     refs.note.className = 'hint';
-    refs.note.textContent = sc ? `Sample: ${sc.short}${state.modified ? ' (edited)' : ''}` : 'Fill in the vendor’s details. Anything left empty is flagged.';
+    refs.note.textContent = sc ? 'Fill in the vendor’s details. Anything left empty is flagged.' : 'Fill in the vendor’s details. Anything left empty is flagged.';
   }
   function syncFromForm() {
     state.editorText = JSON.stringify(formObj, null, 2); state.modified = true;
@@ -1347,10 +1334,7 @@ if (typeof module !== 'undefined') module.exports = Data;
         h('section', { class: 'alert ' + gt }, h('h3', { class: 'alert-h' }, title), h('div', { class: 'flags' }, list.flatMap((x) => flagsOf(x)).map((f) => flagRow(f, gt)))))));
     }
     if (d.status === 'pending') {
-      const sc = SCN.find((x) => x.key === rec.scenarioKey);
-      const btns = [];
-      if (d.sub === 'awaiting_vendor' && sc && sc.corrected) btns.push(h('button', { class: 'btn primary', type: 'button', onclick: () => resubmit(rec, true) }, 'Simulate the vendor’s corrected reply'));
-      btns.push(h('button', { class: 'btn', type: 'button', onclick: () => resubmit(rec, false) }, 'Fix and resubmit'));
+      const btns = [h('button', { class: 'btn primary', type: 'button', onclick: () => resubmit(rec, false) }, 'Fix and resubmit')];
       nodes.push(h('div', { class: 'sect' }, h('div', { class: 'actions' }, btns)));
     }
 
@@ -1410,7 +1394,7 @@ if (typeof module !== 'undefined') module.exports = Data;
         const d = c.result.decision, first = c.result.findings.find((f) => f.status === 'fail') || c.result.findings.find((f) => f.status === 'warn');
         const open = () => openDrawer(c.caseId);
         return h('tr', { tabindex: '0', onclick: open, onkeydown: (e) => { if (e.key === 'Enter') open(); } },
-          h('td', {}, h('span', { class: 'chip' }, c.caseId), c.attempt > 1 ? h('span', { class: 'tag' }, 'attempt ' + c.attempt) : null, c.seed ? h('span', { class: 'tag' }, 'sample') : null),
+          h('td', {}, h('span', { class: 'chip' }, c.caseId), c.attempt > 1 ? h('span', { class: 'tag' }, 'attempt ' + c.attempt) : null, null),
           h('td', {}, vendorName(c)), h('td', {}, statusPill(d)),
           h('td', { class: 'cell-main' }, d.status === 'approved' ? (d.sub === 'with_notes' ? 'Passed, with notes' : 'All checks passed') : first ? first.title : 'All checks passed'),
           h('td', { class: 'muted' }, fmtWhen(c.receivedAt)));
