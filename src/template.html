@@ -11,17 +11,17 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* Layout idea: one page. A steps strip, then a fixed-height workspace (scrolling form on the left,
-   live run and result on the right), then the case history. White surfaces on a pale yellow page,
-   yellow for action and selection, green / orange / red only for outcomes. Light theme by choice. */
+   live run and result on the right), then the case history. Dark olive surfaces,
+   yellow for action and selection, green / orange / red only for outcomes. Dark theme by choice. */
 :root {
-  --bg: #F6F0D6; --surface: #FFFCF0; --surface-2: #F8F2DD; --ink: #1B1A14; --ink-2: #4D4936; --ink-3: #6F6A52;
-  --line: #E4DAAE; --line-2: #EEE6C4; --accent: #FFC700; --accent-hover: #F2BA00; --accent-edge: #DDAA00; --accent-ink: #1B1A14;
-  --accent-soft: #FBEFB5; --accent-text: #7A5C00;
-  --ok: #17784A; --ok-bg: #E3F4EA; --warn: #B45309; --warn-bg: #FFEBD6; --bad: #B42318; --bad-bg: #FDE7E4;
-  --shadow: 0 1px 2px rgba(60,48,0,.06), 0 8px 24px rgba(60,48,0,.06);
+  --bg: #141309; --surface: #1D1B10; --surface-2: #262314; --ink: #F5F0DA; --ink-2: #CFC8A6; --ink-3: #9A9376;
+  --line: #3A3620; --line-2: #2D2A18; --accent: #FFC700; --accent-hover: #FFD433; --accent-edge: #FFC700; --accent-ink: #1B1A14;
+  --accent-soft: #34290A; --accent-text: #FFD54A;
+  --ok: #4ADE9A; --ok-bg: #12301F; --warn: #FFA24A; --warn-bg: #3A2410; --bad: #FF7A6B; --bad-bg: #3D1814;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
   --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
-  color-scheme: light;
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; }
@@ -78,7 +78,7 @@ button { cursor: pointer; }
 .select { padding: 5px 9px; font-size: 13px; max-width: 100%; }
 .fld input, .fld select { width: 100%; background: var(--surface-2); }
 .fld input:focus, .fld select:focus { outline: 2px solid var(--accent-edge); outline-offset: 0; background: var(--surface); }
-.fld input::placeholder { color: #A8A285; }
+.fld input::placeholder { color: #6E6848; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { background: none; border: 0; padding: 4px 11px; font-size: 12.5px; color: var(--ink-2); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
@@ -167,7 +167,7 @@ button { cursor: pointer; }
 .flags { display: grid; }
 .flag { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; }
 .alert .flag + .flag { border-top: 1px solid rgba(0,0,0,.08); }
-.kindpill { flex: none; min-width: 84px; text-align: center; font: 700 11.5px/1 var(--mono); letter-spacing: .05em; padding: 5px 8px; border-radius: 5px; color: #fff; background: var(--ink-2); }
+.kindpill { flex: none; min-width: 84px; text-align: center; font: 700 11.5px/1 var(--mono); letter-spacing: .05em; padding: 5px 8px; border-radius: 5px; color: #141309; background: var(--ink-2); }
 .flag.fix .kindpill { background: var(--warn); } .flag.review .kindpill, .flag.block .kindpill { background: var(--bad); } .flag.note .kindpill { background: var(--accent); color: var(--accent-ink); }
 .flag-text { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
 .flag.note .flag-text { font-weight: 500; }
@@ -201,7 +201,7 @@ table.cases tbody tr:hover { background: var(--accent-soft); }
 .empty { padding: 28px; text-align: center; color: var(--ink-3); }
 
 /* ---------- drawer ---------- */
-.scrim { position: fixed; inset: 0; background: rgba(40,32,0,.4); z-index: 40; }
+.scrim { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 40; }
 .drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100%); z-index: 41; background: var(--bg); box-shadow: -10px 0 40px rgba(40,32,0,.25); overflow-y: auto; }
 .drawer-h { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
 .drawer-b { padding: 16px 20px 40px; }
