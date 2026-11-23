@@ -5,20 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Vendor Onboarding Desk</title>
 <meta name="description" content="Vendor onboarding: submit a vendor, watch the checks run, get an approved, pending or rejected decision with reasons.">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FFC700'/%3E%3Cpath d='M9 16.5l5 5 9-10' fill='none' stroke='%231B1A14' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2386A5FF'/%3E%3Cpath d='M9 16.5l5 5 9-10' fill='none' stroke='%230D121A' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 /* Layout idea: one page. A steps strip, then a fixed-height workspace (scrolling form on the left,
-   live run and result on the right), then the case history. Dark olive surfaces,
-   yellow for action and selection, green / orange / red only for outcomes. Dark theme by choice. */
+   live run and result on the right), then the case history. Dark navy surfaces,
+   blue for action and selection, green / orange / red only for outcomes. Dark theme by choice. */
 :root {
-  --bg: #141309; --surface: #1D1B10; --surface-2: #262314; --ink: #F5F0DA; --ink-2: #CFC8A6; --ink-3: #9A9376;
-  --line: #3A3620; --line-2: #2D2A18; --accent: #FFC700; --accent-hover: #FFD433; --accent-edge: #FFC700; --accent-ink: #1B1A14;
-  --accent-soft: #34290A; --accent-text: #FFD54A;
-  --ok: #4ADE9A; --ok-bg: #12301F; --warn: #FFA24A; --warn-bg: #3A2410; --bad: #FF7A6B; --bad-bg: #3D1814;
-  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  --bg: #0D121A; --surface: #151C27; --surface-2: #1A2230; --ink: #E8ECF3; --ink-2: #AAB4C6; --ink-3: #7C889C;
+  --line: #263042; --line-2: #1E2736; --accent: #86A5FF; --accent-hover: #A3BBFF; --accent-edge: #86A5FF; --accent-ink: #0D121A;
+  --accent-soft: #1C2849; --accent-text: #A9C0FF;
+  --ok: #5FD093; --ok-bg: #12301F; --warn: #F0B34F; --warn-bg: #33270F; --bad: #FF8E8B; --bad-bg: #3B1818;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.3);
   --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
   --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
@@ -78,7 +78,7 @@ button { cursor: pointer; }
 .select { padding: 5px 9px; font-size: 13px; max-width: 100%; }
 .fld input, .fld select { width: 100%; background: var(--surface-2); }
 .fld input:focus, .fld select:focus { outline: 2px solid var(--accent-edge); outline-offset: 0; background: var(--surface); }
-.fld input::placeholder { color: #6E6848; }
+.fld input::placeholder { color: #5A667C; }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .seg button { background: none; border: 0; padding: 4px 11px; font-size: 12.5px; color: var(--ink-2); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); font-weight: 600; }
@@ -167,7 +167,7 @@ button { cursor: pointer; }
 .flags { display: grid; }
 .flag { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; }
 .alert .flag + .flag { border-top: 1px solid rgba(0,0,0,.08); }
-.kindpill { flex: none; min-width: 84px; text-align: center; font: 700 11.5px/1 var(--mono); letter-spacing: .05em; padding: 5px 8px; border-radius: 5px; color: #141309; background: var(--ink-2); }
+.kindpill { flex: none; min-width: 84px; text-align: center; font: 700 11.5px/1 var(--mono); letter-spacing: .05em; padding: 5px 8px; border-radius: 5px; color: #0D121A; background: var(--ink-2); }
 .flag.fix .kindpill { background: var(--warn); } .flag.review .kindpill, .flag.block .kindpill { background: var(--bad); } .flag.note .kindpill { background: var(--accent); color: var(--accent-ink); }
 .flag-text { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
 .flag.note .flag-text { font-weight: 500; }
