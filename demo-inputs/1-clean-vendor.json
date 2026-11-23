@@ -1,0 +1,58 @@
+{
+  "company": {
+    "legalName": "Meridian Components Pvt. Ltd.",
+    "tradeName": "",
+    "country": "IN",
+    "registrationNumber": "U29299MH2016PTC284175",
+    "address": {
+      "line": "Plot 14, MIDC Industrial Area, Chakan",
+      "city": "Pune",
+      "postal": "410501",
+      "country": "IN"
+    },
+    "website": "meridiancomponents.in",
+    "contactName": "Anita Deshmukh",
+    "contactEmail": "accounts@meridiancomponents.in",
+    "contactPhone": "+91 98765 43210"
+  },
+  "tax": {
+    "idType": "GSTIN",
+    "idValue": "27AABCM4821K1ZF",
+    "pan": "AABCM4821K"
+  },
+  "bank": {
+    "accountHolderName": "MERIDIAN COMPONENTS PRIVATE LIMITED",
+    "bankName": "HDFC Bank",
+    "accountNumber": "50200041873562",
+    "ifsc": "HDFC0001234"
+  },
+  "documents": [
+    {
+      "type": "certificate_of_incorporation",
+      "filename": "coi_meridian.pdf",
+      "issuedTo": "Meridian Components Private Limited",
+      "issueDate": "2016-08-12"
+    },
+    {
+      "type": "gst_certificate",
+      "filename": "gst_reg.pdf",
+      "issuedTo": "MERIDIAN COMPONENTS PRIVATE LIMITED",
+      "taxId": "27AABCM4821K1ZF",
+      "issueDate": "2019-04-03"
+    },
+    {
+      "type": "pan_card",
+      "filename": "pan.pdf",
+      "issuedTo": "MERIDIAN COMPONENTS PRIVATE LIMITED",
+      "taxId": "AABCM4821K",
+      "issueDate": "2016-09-01"
+    },
+    {
+      "type": "cancelled_cheque",
+      "filename": "cheque.jpg",
+      "issuedTo": "MERIDIAN COMPONENTS PRIVATE LIMITED",
+      "accountNumber": "50200041873562",
+      "issueDate": "2026-11-03"
+    }
+  ]
+}

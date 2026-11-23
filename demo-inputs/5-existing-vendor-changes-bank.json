@@ -1,0 +1,58 @@
+{
+  "company": {
+    "legalName": "Northwind Logistics Pvt Ltd",
+    "tradeName": "",
+    "country": "IN",
+    "registrationNumber": "U63090KA2011PTC059912",
+    "address": {
+      "line": "88 Whitefield Main Road",
+      "city": "Bengaluru",
+      "postal": "560066",
+      "country": "IN"
+    },
+    "website": "northwindlogistics.in",
+    "contactName": "Rohit Nair",
+    "contactEmail": "rohit.nair@northwind-logistics.co",
+    "contactPhone": "+91 90000 11122"
+  },
+  "tax": {
+    "idType": "GSTIN",
+    "idValue": "29AAECN3317F1ZL",
+    "pan": "AAECN3317F"
+  },
+  "bank": {
+    "accountHolderName": "Northwind Logistics Private Limited",
+    "bankName": "Axis Bank",
+    "accountNumber": "917020058812344",
+    "ifsc": "UTIB0000456"
+  },
+  "documents": [
+    {
+      "type": "certificate_of_incorporation",
+      "filename": "coi.pdf",
+      "issuedTo": "Northwind Logistics Private Limited",
+      "issueDate": "2011-02-21"
+    },
+    {
+      "type": "gst_certificate",
+      "filename": "gst.pdf",
+      "issuedTo": "NORTHWIND LOGISTICS PRIVATE LIMITED",
+      "taxId": "29AAECN3317F1ZL",
+      "issueDate": "2018-07-02"
+    },
+    {
+      "type": "pan_card",
+      "filename": "pan.pdf",
+      "issuedTo": "NORTHWIND LOGISTICS PRIVATE LIMITED",
+      "taxId": "AAECN3317F",
+      "issueDate": "2011-03-10"
+    },
+    {
+      "type": "cancelled_cheque",
+      "filename": "new_cheque.jpg",
+      "issuedTo": "NORTHWIND LOGISTICS PRIVATE LIMITED",
+      "accountNumber": "917020058812344",
+      "issueDate": "2026-11-14"
+    }
+  ]
+}

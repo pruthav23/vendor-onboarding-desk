@@ -1,0 +1,49 @@
+{
+  "company": {
+    "legalName": "Kellner Präzisionstechnik GmbH",
+    "tradeName": "",
+    "country": "DE",
+    "registrationNumber": "HRB 748291",
+    "address": {
+      "line": "Industriestraße 22",
+      "city": "Stuttgart",
+      "postal": "70565",
+      "country": "DE"
+    },
+    "website": "kellner-praezision.de",
+    "contactName": "Jonas Becker",
+    "contactEmail": "j.becker@kellner-praezision.de",
+    "contactPhone": "+49 711 5550 2301"
+  },
+  "tax": {
+    "idType": "USt-IdNr",
+    "idValue": "DE298475318"
+  },
+  "bank": {
+    "accountHolderName": "Kellner Praezisionstechnik GmbH",
+    "bankName": "Commerzbank",
+    "iban": "DE44500105175407324931"
+  },
+  "documents": [
+    {
+      "type": "vat_certificate",
+      "filename": "ustid_bestaetigung.pdf",
+      "issuedTo": "Kellner Präzisionstechnik GmbH",
+      "taxId": "DE298475317",
+      "issueDate": "2021-03-04"
+    },
+    {
+      "type": "certificate_of_incorporation",
+      "filename": "incorporation.pdf",
+      "issuedTo": "Kellner Präzisionstechnik GmbH",
+      "issueDate": "2014-06-18"
+    },
+    {
+      "type": "bank_letter",
+      "filename": "commerzbank_letter.pdf",
+      "issuedTo": "Kellner Praezisionstechnik GmbH",
+      "accountNumber": "DE44500105175407324931",
+      "issueDate": "2026-07-06"
+    }
+  ]
+}

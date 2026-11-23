@@ -1,0 +1,44 @@
+{
+  "company": {
+    "legalName": "Cobalt Ridge Services LLC",
+    "tradeName": "",
+    "country": "US",
+    "registrationNumber": "TX-1930228",
+    "address": {
+      "line": "1500 Commerce Drive",
+      "city": "Austin",
+      "postal": "78744",
+      "country": "US"
+    },
+    "website": "cobaltridgeservices.com",
+    "contactName": "Tom Reyes",
+    "contactEmail": "tom@cobaltridgeservices.com",
+    "contactPhone": "+1 512 555 0163"
+  },
+  "tax": {
+    "idType": "EIN",
+    "idValue": "82-5530916"
+  },
+  "bank": {
+    "accountHolderName": "Cobalt Ridge Services LLC",
+    "bankName": "Chase",
+    "routingNumber": "071000136",
+    "accountNumber": "4402918836"
+  },
+  "documents": [
+    {
+      "type": "w9",
+      "filename": "w9.pdf",
+      "issuedTo": "Cobalt Ridge Services LLC",
+      "taxId": "82-5530916",
+      "issueDate": "2026-11-17"
+    },
+    {
+      "type": "bank_letter",
+      "filename": "chase_letter.pdf",
+      "issuedTo": "Cobalt Ridge Services LLC",
+      "accountNumber": "4402918836",
+      "issueDate": "2026-11-17"
+    }
+  ]
+}

@@ -137,7 +137,7 @@
       const f = e.target.files[0]; if (!f) return;
       const rd = new FileReader();
       rd.onload = () => {
-        try { const v = JSON.parse(rd.result); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('it is not a JSON object'); setEditor(v, { key: 'custom', parent: null }); }
+        try { const v = JSON.parse(rd.result); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('it is not a JSON object'); setEditor(v, { key: 'custom' }); }
         catch (err) { refs.note.textContent = 'That file is not a valid submission: ' + err.message; refs.note.className = 'hint err'; }
       };
       rd.readAsText(f); e.target.value = '';

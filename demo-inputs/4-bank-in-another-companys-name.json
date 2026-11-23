@@ -1,0 +1,44 @@
+{
+  "company": {
+    "legalName": "Orion Freight Solutions LLC",
+    "tradeName": "",
+    "country": "US",
+    "registrationNumber": "IL-0897114",
+    "address": {
+      "line": "400 W Erie Street, Floor 6",
+      "city": "Chicago",
+      "postal": "60654",
+      "country": "US"
+    },
+    "website": "orionfreight.com",
+    "contactName": "Daniel Ruiz",
+    "contactEmail": "daniel@orionfreight.com",
+    "contactPhone": "+1 312 555 0187"
+  },
+  "tax": {
+    "idType": "EIN",
+    "idValue": "84-3920157"
+  },
+  "bank": {
+    "accountHolderName": "Delta Marine Holdings Ltd",
+    "bankName": "First Midwest Bank",
+    "routingNumber": "061000010",
+    "accountNumber": "6670142298"
+  },
+  "documents": [
+    {
+      "type": "w9",
+      "filename": "w9_orion.pdf",
+      "issuedTo": "Orion Freight Solutions LLC",
+      "taxId": "84-3920157",
+      "issueDate": "2026-11-11"
+    },
+    {
+      "type": "bank_letter",
+      "filename": "bank_letter.pdf",
+      "issuedTo": "Delta Marine Holdings Ltd",
+      "accountNumber": "6670142298",
+      "issueDate": "2026-11-11"
+    }
+  ]
+}
