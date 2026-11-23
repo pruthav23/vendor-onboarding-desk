@@ -8,7 +8,7 @@ A working process that takes a vendor's onboarding submission, checks it, and de
 
 1. Open the demo (or `index.html` locally, no server needed).
 2. On **Process**, pick an example, or switch to **Form** to fill in a vendor yourself, or upload a JSON file. Press **Run**.
-3. Open **Dashboard** for every case, and **How it works** for the rules.
+3. Open **case history** for every case, and **How it works** for the rules.
 
 Good first runs: *Clean submission*, then *Missing and wrong documents* followed by **Simulate the vendor's corrected reply**.
 

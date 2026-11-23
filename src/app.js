@@ -1,6 +1,6 @@
 /* ---------------------------------------------------------------
-   UI for the vendor onboarding process.
-   Views: Process (pick, run, result), Dashboard, How it works.
+   UI for the vendor onboarding process, on one page:
+   steps strip, intake form + live run/result, case history, how it works.
 ---------------------------------------------------------------- */
 (function () {
   'use strict';
@@ -62,14 +62,14 @@
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return k in mem ? mem[k] : d; } },
     set(k, v) { mem[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable: keep in memory */ } },
   };
-  const KEYS = { cases: 'vod.cases.v3', master: 'vod.master.v3', settings: 'vod.settings.v3', counter: 'vod.counter.v3' };
+  const KEYS = { cases: 'vod.cases.v4', master: 'vod.master.v4', settings: 'vod.settings.v4', counter: 'vod.counter.v4' };
   const SCN = Data.scenarios(new Date());
   const state = {
     cases: store.get(KEYS.cases, null),
     master: store.get(KEYS.master, null),
     settings: Object.assign({ speed: reduced ? 'fast' : 'normal', addApproved: false }, store.get(KEYS.settings, {})),
     counter: store.get(KEYS.counter, 0),
-    view: 'process', mode: 'examples', scenarioKey: 'S0', editorText: '', modified: false, parent: null,
+    scenarioKey: 'custom', editorText: '', modified: false, parent: null,
     running: false, runToken: 0, filter: 'all', drawerCase: null,
   };
   const persist = () => { store.set(KEYS.cases, state.cases.slice(-300)); store.set(KEYS.master, state.master); store.set(KEYS.settings, state.settings); store.set(KEYS.counter, state.counter); };
@@ -119,40 +119,182 @@
     setTimeout(() => { btn.textContent = label; }, 1600);
   };
 
-  /* ============================ PROCESS VIEW ======================= */
-  const viewProcess = $('#view-process');
+  /* ============================ PAGE =============================== */
+  const root = $('#app');
   const refs = {};
 
-  function buildProcess() {
-    viewProcess.textContent = '';
-    const left = h('div', { class: 'card' });
-    const right = h('div', { class: 'rightcol' });
-    viewProcess.append(h('div', { class: 'process' }, left, right));
-
-    left.append(h('div', { class: 'card-h' }, h('h2', {}, 'Vendor submission')));
-    refs.parentBanner = h('div', { class: 'banner-info', hidden: true });
-    refs.scnList = h('div', { class: 'scn-list', role: 'radiogroup', 'aria-label': 'Scenario' });
-    refs.runBtn = h('button', { class: 'btn primary wide', type: 'button', id: 'run-btn', onclick: startRun }, 'Run');
-    refs.editor = h('textarea', { class: 'editor', id: 'json-editor', spellcheck: 'false', 'aria-label': 'Submission JSON' });
-    refs.editorStatus = h('div', { class: 'editor-status' });
-    refs.editor.addEventListener('input', () => { state.editorText = refs.editor.value; state.modified = true; renderScenarios(); checkEditor(); });
-    refs.speed = h('div', { class: 'seg', role: 'group', 'aria-label': 'Run speed' });
-    const more = h('details', { class: 'fold plain' }, h('summary', {}, 'Edit the data or change speed'),
-      h('div', { class: 'fold-body' }, h('div', { class: 'row-between' }, h('span', { class: 'muted' }, 'Speed'), refs.speed), refs.editor, refs.editorStatus));
-    refs.mode = h('div', { class: 'seg modeseg', role: 'group', 'aria-label': 'Input mode' });
-    refs.exWrap = h('div', {}, refs.scnList);
-    refs.formWrap = h('div', { hidden: true });
-    left.append(h('div', { class: 'card-b' }, refs.mode, refs.parentBanner, refs.exWrap, refs.formWrap, refs.runBtn, more));
-
-    refs.result = h('div', { class: 'card result', hidden: true, 'aria-live': 'polite' });
-    refs.runHeadMeta = h('span', { class: 'muted' }, '');
-    const stagesCard = h('div', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', {}, 'Live run'), refs.runHeadMeta));
-    refs.stageWrap = h('div', { class: 'stages' });
-    stagesCard.append(refs.stageWrap);
-    right.append(refs.result, stagesCard);
-    buildStages(); renderScenarios(); renderSpeed(); renderMode();
+  function buildPage() {
+    root.textContent = '';
+    const step = (n, t, d) => h('div', { class: 'step' }, h('span', { class: 'n' }, n), h('div', {}, h('b', {}, t), h('span', {}, d)));
+    root.append(
+      h('section', { class: 'steps', 'aria-label': 'How the team uses this' },
+        step(1, 'Submit a vendor', 'Fill in the form or import a file'),
+        step(2, 'Checks run live', 'Seven stages, each one visible'),
+        step(3, 'Act on the decision', 'Approved, pending or rejected, with reasons and drafted emails')),
+      h('div', { class: 'workspace' }, buildFormPanel(), buildRunPanel()),
+      buildCasesPanel(),
+      buildHow());
+    buildStages(); renderSpeed(); renderCases();
   }
 
+  /* ----- form panel ----- */
+  function buildFormPanel() {
+    refs.sample = h('select', { class: 'select', 'aria-label': 'Load a sample vendor' },
+      h('option', { value: '' }, 'Load a sample…'),
+      h('optgroup', { label: 'Should be approved' }, SCN.filter((s) => s.kind === 'happy').map((s) => h('option', { value: s.key }, s.label))),
+      h('optgroup', { label: 'Edge cases' }, SCN.filter((s) => s.kind === 'edge').map((s) => h('option', { value: s.key }, s.label))),
+      h('optgroup', { label: 'Bonus' }, SCN.filter((s) => s.kind === 'bonus').map((s) => h('option', { value: s.key }, s.label))));
+    refs.sample.addEventListener('change', () => { if (refs.sample.value) loadScenario(refs.sample.value); refs.sample.value = ''; });
+
+    const fileInput = h('input', { type: 'file', accept: '.json,application/json', class: 'sr', id: 'file-in', onchange: (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const rd = new FileReader();
+      rd.onload = () => {
+        try { const v = JSON.parse(rd.result); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('it is not a JSON object'); setEditor(v, { key: 'custom', parent: null }); }
+        catch (err) { refs.note.textContent = 'That file is not a valid submission: ' + err.message; refs.note.className = 'hint err'; }
+      };
+      rd.readAsText(f); e.target.value = '';
+    } });
+
+    refs.note = h('div', { class: 'hint' });
+    refs.formWrap = h('div', {});
+    refs.editor = h('textarea', { class: 'editor', id: 'json-editor', spellcheck: 'false', 'aria-label': 'Submission JSON' });
+    refs.editorStatus = h('div', { class: 'editor-status' });
+    refs.editor.addEventListener('input', () => { state.editorText = refs.editor.value; state.modified = true; renderNote(); checkEditor(); });
+    refs.advanced = h('details', { class: 'fold plain' }, h('summary', {}, 'Advanced: edit as JSON'),
+      h('div', { class: 'fold-body' }, refs.editor, refs.editorStatus));
+    refs.formScroll = h('div', { class: 'panel-body', id: 'form-scroll' }, refs.formWrap, refs.advanced);
+    refs.parentBanner = h('div', { class: 'banner-info', hidden: true });
+    refs.runBtn = h('button', { class: 'btn primary wide', type: 'button', id: 'run-btn', onclick: startRun }, 'Run checks');
+
+    return h('section', { class: 'panel form-panel', 'aria-label': 'New vendor submission' },
+      h('div', { class: 'panel-h' }, h('h2', {}, 'New vendor submission')),
+      h('div', { class: 'toolbar' }, refs.sample,
+        h('label', { class: 'btn sm', for: 'file-in', tabindex: '0', role: 'button', onkeydown: (e) => { if (e.key === 'Enter') fileInput.click(); } }, 'Import JSON'), fileInput,
+        h('button', { class: 'btn sm', type: 'button', onclick: () => setEditor(blankSubmission(), { key: 'custom', parent: null, resetScroll: true }) }, 'Clear')),
+      refs.note, refs.formScroll,
+      h('div', { class: 'panel-f' }, refs.parentBanner, refs.runBtn));
+  }
+
+  const COUNTRIES = [['IN', 'India'], ['US', 'United States'], ['GB', 'United Kingdom'], ['DE', 'Germany'], ['SG', 'Singapore (no ruleset yet)']];
+  const ID_TYPE = { IN: 'GSTIN', US: 'EIN', GB: 'VAT', DE: 'USt-IdNr' };
+  const TAX_TYPES = ['gst_certificate', 'vat_certificate', 'w9', 'pan_card'], BANK_TYPES = ['bank_letter', 'cancelled_cheque'];
+  const blankSubmission = () => ({ company: { legalName: '', tradeName: '', country: 'IN', registrationNumber: '', address: { line: '', city: '', postal: '', country: 'IN' }, website: '', contactName: '', contactEmail: '', contactPhone: '' }, tax: { idType: 'GSTIN', idValue: '', pan: '' }, bank: { accountHolderName: '', bankName: '', accountNumber: '', ifsc: '' }, documents: [] });
+  const getp = (o, path) => path.split('.').reduce((a, k) => (a == null ? undefined : a[k]), o);
+  function setp(o, path, v) { const ks = path.split('.'); let cur = o; for (const k of ks.slice(0, -1)) { if (!cur[k] || typeof cur[k] !== 'object') cur[k] = {}; cur = cur[k]; } cur[ks[ks.length - 1]] = v; }
+  let formObj = null;
+
+  function parseEditor() { try { const v = JSON.parse(state.editorText); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('The submission must be a JSON object.'); return { ok: true, value: v }; } catch (e) { return { ok: false, error: e.message }; } }
+  function checkEditor() {
+    const p = parseEditor();
+    refs.editorStatus.textContent = '';
+    refs.editorStatus.append(p.ok ? h('span', { class: 'muted' }, 'Valid JSON') : h('span', { style: 'color:var(--bad)' }, 'Invalid JSON: ' + p.error));
+    refs.runBtn.disabled = state.running || !p.ok;
+  }
+  function renderNote() {
+    const sc = SCN.find((x) => x.key === state.scenarioKey);
+    refs.note.className = 'hint';
+    refs.note.textContent = sc ? `Sample: ${sc.short}${state.modified ? ' (edited)' : ''}` : 'Fill in the vendor’s details. Anything left empty is flagged.';
+  }
+  function syncFromForm() {
+    state.editorText = JSON.stringify(formObj, null, 2); state.modified = true;
+    refs.editor.value = state.editorText; renderNote(); checkEditor();
+  }
+  function setEditor(obj, opts = {}) {
+    state.editorText = JSON.stringify(obj, null, 2);
+    state.modified = !!opts.modified;
+    if (opts.key !== undefined) state.scenarioKey = opts.key;
+    if ('parent' in opts) state.parent = opts.parent;
+    refs.editor.value = state.editorText;
+    renderForm(); renderNote(); checkEditor(); renderParentBanner();
+    if (opts.resetScroll !== false) refs.formScroll.scrollTop = 0;
+  }
+  function loadScenario(key) {
+    if (state.running) return;
+    const sc = SCN.find((x) => x.key === key);
+    setEditor(JSON.parse(JSON.stringify(sc.submission)), { key, parent: null });
+  }
+  function renderParentBanner() {
+    refs.parentBanner.textContent = '';
+    refs.parentBanner.hidden = !state.parent;
+    if (state.parent) refs.parentBanner.append(icon('info'), h('span', {}, `Resubmitting ${state.parent}`));
+  }
+
+  function fld(label, path, opts = {}) {
+    const input = h('input', { type: opts.type || 'text', value: String(getp(formObj, path) ?? ''), 'aria-label': label, autocomplete: 'off', spellcheck: 'false', placeholder: opts.placeholder || '' });
+    input.addEventListener('input', () => { setp(formObj, path, input.value); syncFromForm(); });
+    return h('label', { class: 'fld' + (opts.wide ? ' wide' : '') }, h('span', {}, label), input);
+  }
+
+  function renderForm() {
+    const wrap = refs.formWrap; wrap.textContent = '';
+    const p = parseEditor();
+    if (!p.ok) { wrap.append(h('p', { style: 'color:var(--bad)' }, 'The data is not valid JSON, so the form cannot show it. Fix it under "Advanced", or press Clear.')); return; }
+    formObj = p.value;
+    for (const k of ['company', 'tax', 'bank']) if (!formObj[k] || typeof formObj[k] !== 'object') formObj[k] = {};
+    if (!formObj.company.address || typeof formObj.company.address !== 'object') formObj.company.address = {};
+    if (!Array.isArray(formObj.documents)) formObj.documents = [];
+    const cc = String(formObj.company.country || '').toUpperCase();
+
+    const country = h('select', { 'aria-label': 'Country of registration' }, COUNTRIES.map(([c, n]) => h('option', { value: c }, n)));
+    if (!COUNTRIES.some(([c]) => c === cc)) country.append(h('option', { value: cc }, cc || 'Choose…'));
+    country.value = cc || 'IN';
+    country.addEventListener('change', () => { formObj.company.country = country.value; formObj.company.address.country = country.value; if (ID_TYPE[country.value]) formObj.tax.idType = ID_TYPE[country.value]; syncFromForm(); renderForm(); });
+
+    wrap.append(h('h4', { class: 'fh' }, 'Company'),
+      h('div', { class: 'form-grid' },
+        fld('Legal name', 'company.legalName', { wide: true, placeholder: 'e.g. Meridian Components Pvt. Ltd.' }), fld('Trade name (optional)', 'company.tradeName', { wide: true }),
+        h('label', { class: 'fld' }, h('span', {}, 'Country'), country), fld('Website', 'company.website', { placeholder: 'example.com' }),
+        fld('Address', 'company.address.line', { wide: true }), fld('City', 'company.address.city'), fld('Postal code', 'company.address.postal'),
+        fld('Contact name', 'company.contactName'), fld('Contact phone', 'company.contactPhone', { placeholder: '+91 98765 43210' }), fld('Contact email', 'company.contactEmail', { wide: true, placeholder: 'accounts@example.com' })),
+      h('h4', { class: 'fh' }, 'Tax'),
+      h('div', { class: 'form-grid' }, fld((ID_TYPE[cc] || 'Tax') + ' number', 'tax.idValue', { wide: cc !== 'IN', placeholder: Engine.TAX[cc] ? Engine.TAX[cc].example : '' }), cc === 'IN' ? fld('PAN', 'tax.pan', { placeholder: 'AABCM4821K' }) : null),
+      h('h4', { class: 'fh' }, 'Bank'),
+      h('div', { class: 'form-grid' }, fld('Account holder name', 'bank.accountHolderName', { wide: true }), fld('Bank name', 'bank.bankName', { wide: true }),
+        cc === 'GB' || cc === 'DE' ? fld('IBAN', 'bank.iban', { wide: true })
+          : [fld('Account number', 'bank.accountNumber'), cc === 'IN' ? fld('IFSC', 'bank.ifsc') : cc === 'US' ? fld('Routing number', 'bank.routingNumber') : null]));
+
+    const today = Date.now();
+    const iso = (d) => new Date(d).toISOString().slice(0, 10);
+    const addRequired = () => {
+      const f = formObj, have = new Set(f.documents.map((d) => d.type)), holder = f.bank.accountHolderName || f.company.legalName, acct = f.bank.iban || f.bank.accountNumber || '';
+      for (const t of Engine.REQUIRED_DOCS[cc] || []) {
+        if (have.has(t)) continue;
+        const d = { type: t, filename: t + '.pdf', issuedTo: BANK_TYPES.includes(t) ? holder : f.company.legalName, issueDate: iso(today - 10 * 86400000) };
+        if (TAX_TYPES.includes(t)) d.taxId = t === 'pan_card' ? f.tax.pan || '' : f.tax.idValue || '';
+        if (BANK_TYPES.includes(t)) d.accountNumber = acct;
+        f.documents.push(d);
+      }
+      syncFromForm(); renderForm();
+    };
+    const typeSel = h('select', { class: 'select', 'aria-label': 'Document type to add' }, h('option', { value: '' }, 'Add a document…'), Object.entries(Engine.DOC_LABELS).map(([k, l]) => h('option', { value: k }, l)));
+    typeSel.addEventListener('change', () => { if (!typeSel.value) return; formObj.documents.push({ type: typeSel.value, filename: typeSel.value + '.pdf', issuedTo: formObj.company.legalName || '', issueDate: iso(today - 10 * 86400000) }); syncFromForm(); renderForm(); });
+    wrap.append(h('h4', { class: 'fh' }, `Documents (${formObj.documents.length})`),
+      h('div', { class: 'form-tools' }, Engine.REQUIRED_DOCS[cc] ? h('button', { class: 'btn sm', type: 'button', onclick: addRequired }, 'Add the required documents') : null, typeSel),
+      ...formObj.documents.map((d, i) => {
+        const dp = (key) => { const inp = h('input', { type: key.includes('Date') ? 'date' : 'text', value: String(d[key] ?? ''), 'aria-label': key }); inp.addEventListener('input', () => { d[key] = inp.value; syncFromForm(); }); return inp; };
+        const lab = (t, key) => h('label', { class: 'fld' }, h('span', {}, t), dp(key));
+        return h('div', { class: 'docrow' }, h('div', { class: 'docrow-h' }, h('b', {}, Engine.DOC_LABELS[d.type] || d.type), h('button', { class: 'linkbtn', type: 'button', onclick: () => { formObj.documents.splice(i, 1); syncFromForm(); renderForm(); } }, 'Remove')),
+          h('div', { class: 'form-grid' }, lab('Name on document', 'issuedTo'), lab('Issue date', 'issueDate'),
+            TAX_TYPES.includes(d.type) ? lab('Tax ID on document', 'taxId') : null, BANK_TYPES.includes(d.type) ? lab('Account on document', 'accountNumber') : null));
+      }));
+  }
+
+  /* ----- run panel ----- */
+  function buildRunPanel() {
+    refs.runMeta = h('span', { class: 'muted' }, '');
+    refs.speed = h('div', { class: 'seg', role: 'group', 'aria-label': 'Run speed' });
+    refs.result = h('div', { class: 'result', hidden: true, 'aria-live': 'polite' });
+    refs.stageWrap = h('div', { class: 'stages' });
+    refs.runBody = h('div', { class: 'panel-body' }, refs.result, refs.stageWrap);
+    return h('section', { class: 'panel run-panel', 'aria-label': 'Live run' },
+      h('div', { class: 'panel-h' }, h('h2', {}, 'Live run'), h('div', { class: 'actions', style: 'align-items:center' }, refs.runMeta, refs.speed)),
+      refs.runBody);
+  }
+  function renderSpeed() {
+    refs.speed.textContent = '';
+    for (const k of ['fast', 'normal', 'slow']) refs.speed.append(h('button', { type: 'button', 'aria-pressed': String(state.settings.speed === k), onclick: () => { state.settings.speed = k; persist(); renderSpeed(); } }, k[0].toUpperCase() + k.slice(1)));
+  }
   function buildStages() {
     refs.stageWrap.textContent = '';
     refs.stages = {};
@@ -169,135 +311,6 @@
       refs.stageWrap.append(el);
     });
   }
-
-  function renderScenarios() {
-    refs.scnList.textContent = '';
-    for (const sc of SCN) {
-      const sel = sc.key === state.scenarioKey;
-      refs.scnList.append(h('button', { class: 'scn', type: 'button', role: 'radio', 'aria-checked': String(sel), onclick: () => loadScenario(sc.key) },
-        h('span', { class: 'kind ' + sc.kind }, sc.kind === 'happy' ? 'OK' : sc.kind === 'edge' ? 'Edge' : 'Bonus'),
-        h('span', { class: 'lab' }, h('span', {}, sc.label), sel ? h('span', { class: 'sub' }, state.modified ? 'Edited. ' + sc.short : sc.short) : null)));
-    }
-  }
-  function renderSpeed() {
-    refs.speed.textContent = '';
-    for (const k of ['fast', 'normal', 'slow']) refs.speed.append(h('button', { type: 'button', 'aria-pressed': String(state.settings.speed === k), onclick: () => { state.settings.speed = k; persist(); renderSpeed(); } }, k[0].toUpperCase() + k.slice(1)));
-  }
-  function parseEditor() { try { const v = JSON.parse(state.editorText); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('The submission must be a JSON object.'); return { ok: true, value: v }; } catch (e) { return { ok: false, error: e.message }; } }
-  function checkEditor() {
-    const p = parseEditor();
-    refs.editorStatus.textContent = '';
-    refs.editorStatus.append(p.ok ? h('span', { class: 'muted' }, 'Valid JSON') : h('span', { style: 'color:var(--bad)' }, 'Invalid JSON: ' + p.error));
-    refs.runBtn.disabled = state.running || !p.ok;
-  }
-  function setEditor(obj, opts = {}) {
-    state.editorText = JSON.stringify(obj, null, 2);
-    state.modified = !!opts.modified;
-    if (opts.key !== undefined) state.scenarioKey = opts.key;
-    if ('parent' in opts) state.parent = opts.parent;
-    refs.editor.value = state.editorText;
-    renderScenarios(); checkEditor(); renderParentBanner();
-    if (refs.formWrap && state.mode === 'form') renderForm();
-  }
-  function loadScenario(key) {
-    if (state.running) return;
-    const sc = SCN.find((x) => x.key === key);
-    setEditor(JSON.parse(JSON.stringify(sc.submission)), { key, parent: null });
-  }
-  function renderParentBanner() {
-    refs.parentBanner.textContent = '';
-    refs.parentBanner.hidden = !state.parent;
-    if (state.parent) refs.parentBanner.append(icon('info'), h('span', {}, `Resubmitting ${state.parent}`));
-  }
-
-
-  /* ----- input mode and the submission form ----- */
-  function renderMode() {
-    refs.mode.textContent = '';
-    for (const [k, l] of [['examples', 'Examples'], ['form', 'Form']]) refs.mode.append(h('button', { type: 'button', 'aria-pressed': String(state.mode === k), onclick: () => setMode(k) }, l));
-    refs.exWrap.hidden = state.mode !== 'examples';
-    refs.formWrap.hidden = state.mode !== 'form';
-  }
-  function setMode(m) { state.mode = m; renderMode(); if (m === 'form') renderForm(); }
-
-  const COUNTRIES = [['IN', 'India'], ['US', 'United States'], ['GB', 'United Kingdom'], ['DE', 'Germany'], ['SG', 'Singapore (no ruleset yet)']];
-  const ID_TYPE = { IN: 'GSTIN', US: 'EIN', GB: 'VAT', DE: 'USt-IdNr' };
-  const TAX_TYPES = ['gst_certificate', 'vat_certificate', 'w9', 'pan_card'], BANK_TYPES = ['bank_letter', 'cancelled_cheque'];
-  const blankSubmission = () => ({ company: { legalName: '', tradeName: '', country: 'IN', registrationNumber: '', address: { line: '', city: '', postal: '', country: 'IN' }, website: '', contactName: '', contactEmail: '', contactPhone: '' }, tax: { idType: 'GSTIN', idValue: '', pan: '' }, bank: { accountHolderName: '', bankName: '', accountNumber: '', ifsc: '' }, documents: [] });
-  const getp = (o, path) => path.split('.').reduce((a, k) => (a == null ? undefined : a[k]), o);
-  function setp(o, path, v) { const ks = path.split('.'); let cur = o; for (const k of ks.slice(0, -1)) { if (!cur[k] || typeof cur[k] !== 'object') cur[k] = {}; cur = cur[k]; } cur[ks[ks.length - 1]] = v; }
-  let formObj = null;
-  function syncFromForm() {
-    state.editorText = JSON.stringify(formObj, null, 2); state.modified = true;
-    refs.editor.value = state.editorText; renderScenarios(); checkEditor();
-  }
-  function fld(label, path, opts = {}) {
-    const input = h('input', { type: opts.type || 'text', value: String(getp(formObj, path) ?? ''), 'aria-label': label, autocomplete: 'off', spellcheck: 'false', placeholder: opts.placeholder || '' });
-    input.addEventListener('input', () => { setp(formObj, path, input.value); syncFromForm(); });
-    return h('label', { class: 'fld' + (opts.wide ? ' wide' : '') }, h('span', {}, label), input);
-  }
-  function renderForm() {
-    const wrap = refs.formWrap; wrap.textContent = '';
-    const p = parseEditor();
-    if (!p.ok) { wrap.append(h('p', { style: 'color:var(--bad)' }, 'The data is not valid JSON, so the form cannot show it. Fix it under "Edit the data", or start blank.'), h('button', { class: 'btn sm', type: 'button', onclick: () => { setEditor(blankSubmission(), { key: 'custom', parent: null }); } }, 'Start blank')); return; }
-    formObj = p.value;
-    for (const k of ['company', 'tax', 'bank']) if (!formObj[k] || typeof formObj[k] !== 'object') formObj[k] = {};
-    if (!formObj.company.address || typeof formObj.company.address !== 'object') formObj.company.address = {};
-    if (!Array.isArray(formObj.documents)) formObj.documents = [];
-    const cc = String(formObj.company.country || '').toUpperCase();
-
-    const fileInput = h('input', { type: 'file', accept: '.json,application/json', class: 'sr', id: 'file-in', onchange: (e) => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { const v = JSON.parse(rd.result); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('not an object'); setEditor(v, { key: 'custom', parent: null }); } catch (err) { wrap.prepend(h('p', { class: 'form-err' }, 'That file is not a valid submission: ' + err.message)); } }; rd.readAsText(f); e.target.value = ''; } });
-    wrap.append(h('div', { class: 'form-tools' },
-      h('button', { class: 'btn sm', type: 'button', onclick: () => setEditor(blankSubmission(), { key: 'custom', parent: null }) }, 'Start blank'),
-      h('label', { class: 'btn sm', for: 'file-in', tabindex: '0', role: 'button', onkeydown: (e) => { if (e.key === 'Enter') fileInput.click(); } }, 'Upload JSON'), fileInput,
-      h('span', { class: 'muted' }, 'Leave a field empty to see it flagged.')));
-
-    const country = h('select', { 'aria-label': 'Country of registration' }, COUNTRIES.map(([c, n]) => h('option', { value: c }, n)));
-    if (!COUNTRIES.some(([c]) => c === cc)) country.append(h('option', { value: cc }, cc || 'Choose…'));
-    country.value = cc || 'IN';
-    country.addEventListener('change', () => { formObj.company.country = country.value; formObj.company.address.country = country.value; if (ID_TYPE[country.value]) formObj.tax.idType = ID_TYPE[country.value]; syncFromForm(); renderForm(); });
-
-    wrap.append(h('h4', { class: 'fh' }, 'Company'),
-      h('div', { class: 'form-grid' },
-        fld('Legal name', 'company.legalName', { wide: true }), fld('Trade name (optional)', 'company.tradeName', { wide: true }),
-        h('label', { class: 'fld' }, h('span', {}, 'Country'), country), fld('Website', 'company.website', { placeholder: 'example.com' }),
-        fld('Address', 'company.address.line', { wide: true }), fld('City', 'company.address.city'), fld('Postal code', 'company.address.postal'),
-        fld('Contact name', 'company.contactName'), fld('Contact phone', 'company.contactPhone', { placeholder: '+91 …' }), fld('Contact email', 'company.contactEmail', { wide: true })),
-      h('h4', { class: 'fh' }, 'Tax'),
-      h('div', { class: 'form-grid' }, fld((ID_TYPE[cc] || 'Tax') + ' number', 'tax.idValue', { wide: cc !== 'IN' }), cc === 'IN' ? fld('PAN', 'tax.pan') : null),
-      h('h4', { class: 'fh' }, 'Bank'),
-      h('div', { class: 'form-grid' }, fld('Account holder name', 'bank.accountHolderName', { wide: true }), fld('Bank name', 'bank.bankName', { wide: true }),
-        cc === 'GB' || cc === 'DE' ? fld('IBAN', 'bank.iban', { wide: true })
-          : [fld('Account number', 'bank.accountNumber'), cc === 'IN' ? fld('IFSC', 'bank.ifsc') : cc === 'US' ? fld('Routing number', 'bank.routingNumber') : null]));
-
-    // documents
-    const today = Date.now();
-    const iso = (d) => new Date(d).toISOString().slice(0, 10);
-    const addRequired = () => {
-      const f = formObj, have = new Set(f.documents.map((d) => d.type)), holder = f.bank.accountHolderName || f.company.legalName, acct = f.bank.iban || f.bank.accountNumber || '';
-      for (const t of Engine.REQUIRED_DOCS[cc] || []) {
-        if (have.has(t)) continue;
-        const d = { type: t, filename: t + '.pdf', issuedTo: BANK_TYPES.includes(t) ? holder : f.company.legalName, issueDate: iso(today - 10 * 86400000) };
-        if (TAX_TYPES.includes(t)) d.taxId = t === 'pan_card' ? f.tax.pan || '' : f.tax.idValue || '';
-        if (BANK_TYPES.includes(t)) d.accountNumber = acct;
-        f.documents.push(d);
-      }
-      syncFromForm(); renderForm();
-    };
-    const typeSel = h('select', { 'aria-label': 'Document type to add' }, h('option', { value: '' }, 'Add a document…'), Object.entries(Engine.DOC_LABELS).map(([k, l]) => h('option', { value: k }, l)));
-    typeSel.addEventListener('change', () => { if (!typeSel.value) return; formObj.documents.push({ type: typeSel.value, filename: typeSel.value + '.pdf', issuedTo: formObj.company.legalName || '', issueDate: iso(today - 10 * 86400000) }); syncFromForm(); renderForm(); });
-    wrap.append(h('h4', { class: 'fh' }, `Documents (${formObj.documents.length})`),
-      h('div', { class: 'form-tools' }, Engine.REQUIRED_DOCS[cc] ? h('button', { class: 'btn sm', type: 'button', onclick: addRequired }, 'Add the required documents') : null, typeSel),
-      ...formObj.documents.map((d, i) => {
-        const dp = (key) => { const inp = h('input', { type: key.includes('Date') ? 'date' : 'text', value: String(d[key] ?? ''), 'aria-label': key }); inp.addEventListener('input', () => { d[key] = inp.value; syncFromForm(); }); return inp; };
-        const lab = (t, key) => h('label', { class: 'fld' }, h('span', {}, t), dp(key));
-        return h('div', { class: 'docrow' }, h('div', { class: 'docrow-h' }, h('b', {}, Engine.DOC_LABELS[d.type] || d.type), h('button', { class: 'linkbtn', type: 'button', onclick: () => { formObj.documents.splice(i, 1); syncFromForm(); renderForm(); } }, 'Remove')),
-          h('div', { class: 'form-grid' }, lab('Name on document', 'issuedTo'), lab('Issue date', 'issueDate'),
-            TAX_TYPES.includes(d.type) ? lab('Tax ID on document', 'taxId') : null, BANK_TYPES.includes(d.type) ? lab('Account on document', 'accountNumber') : null));
-      }));
-  }
-
-  /* ----- run ----- */
   function resetStages() {
     for (const s of Object.values(refs.stages)) { s.el.dataset.state = 'idle'; s.el.classList.remove('open'); s.checks.textContent = ''; s.count.textContent = ''; s.dot.textContent = String(s.idx); s.head.setAttribute('aria-expanded', 'false'); }
   }
@@ -320,11 +333,11 @@
     const p = parseEditor(); if (!p.ok) return;
     const token = ++state.runToken;
     state.running = true; refs.runBtn.disabled = true; refs.runBtn.textContent = 'Running…';
-    refs.result.hidden = true; resetStages();
+    refs.result.hidden = true; resetStages(); refs.runBody.scrollTop = 0;
     const caseId = nextCaseId();
     const run = Engine.createRun(p.value, ctx(), { caseId, now: new Date() });
     const sp = SPEEDS[state.settings.speed];
-    refs.runHeadMeta.textContent = caseId;
+    refs.runMeta.textContent = caseId;
     while (!run.done()) {
       if (token !== state.runToken) return;
       const meta = Engine.STAGES[run.state.idx], s = refs.stages[meta.id];
@@ -350,24 +363,20 @@
       const c = result.submission.company;
       state.master.push({ id: result.vendorId, legalName: c.legalName, country: c.country, taxId: result.taxValue, bankAccount: result.bankAcct, contactName: c.contactName, contactEmail: c.contactEmail, contactPhone: c.contactPhone, onboarded: new Date().toISOString().slice(0, 10) });
     }
-    persist(); updateNav();
-    state.running = false; refs.runBtn.textContent = 'Run'; checkEditor();
+    persist();
+    state.running = false; refs.runBtn.textContent = 'Run checks'; checkEditor();
     state.parent = null; renderParentBanner();
-    showResult(rec);
-    renderDashboard();
-  }
-
-  function showResult(rec) {
     refs.result.textContent = '';
-    refs.result.append(...resultNodes(rec, { onResubmit: true }));
+    refs.result.append(...resultNodes(rec));
     refs.result.hidden = false;
-    if (!reduced) refs.result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    refs.runBody.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+    renderCases();
   }
 
-  /* ----- result rendering (shared with the dashboard drawer) ----- */
+  /* ----- result rendering (shared with the case drawer) ----- */
   const fold = (title, ...body) => h('details', { class: 'fold' }, h('summary', {}, title), h('div', { class: 'fold-body' }, body));
 
-  function resultNodes(rec, opts = {}) {
+  function resultNodes(rec) {
     const r = rec.result, d = r.decision, tone = statusTone(d);
     const nodes = [];
     const sub = d.status === 'pending' ? statusLabel(d) : d.status === 'approved' && d.sub === 'with_notes' ? 'With notes' : '';
@@ -386,12 +395,15 @@
       ['note', 'Notes', r.findings.filter((x) => x.status === 'warn')],
     ].filter(([, , list]) => list.length);
     if (groups.length) {
-      nodes.push(h('div', { class: 'alerts' }, groups.map(([tone, title, list]) =>
-        h('section', { class: 'alert ' + tone }, h('h3', { class: 'alert-h' }, title), h('div', { class: 'flags' }, list.flatMap((x) => flagsOf(x)).map((f) => flagRow(f, tone)))))));
+      nodes.push(h('div', { class: 'alerts' }, groups.map(([gt, title, list]) =>
+        h('section', { class: 'alert ' + gt }, h('h3', { class: 'alert-h' }, title), h('div', { class: 'flags' }, list.flatMap((x) => flagsOf(x)).map((f) => flagRow(f, gt)))))));
     }
-    if (opts.onResubmit && d.sub === 'awaiting_vendor') {
+    if (d.status === 'pending') {
       const sc = SCN.find((x) => x.key === rec.scenarioKey);
-      if (sc && sc.corrected) nodes.push(h('div', { class: 'sect' }, h('button', { class: 'btn primary', type: 'button', onclick: () => resubmit(rec) }, 'Simulate the vendor’s corrected reply')));
+      const btns = [];
+      if (d.sub === 'awaiting_vendor' && sc && sc.corrected) btns.push(h('button', { class: 'btn primary', type: 'button', onclick: () => resubmit(rec, true) }, 'Simulate the vendor’s corrected reply'));
+      btns.push(h('button', { class: 'btn', type: 'button', onclick: () => resubmit(rec, false) }, 'Fix and resubmit'));
+      nodes.push(h('div', { class: 'sect' }, h('div', { class: 'actions' }, btns)));
     }
 
     const cm = r.comms || {};
@@ -400,7 +412,7 @@
       h('pre', {}, m.body),
       h('div', { class: 'mail-f' }, h('span', {}, 'Draft only, nothing is sent'), h('button', { class: 'btn sm', type: 'button', onclick: (e) => copyText(`To: ${m.to}\nSubject: ${m.subject}\n\n${m.body}`, e.currentTarget) }, 'Copy'))) : null;
     const nChecks = r.findings.filter((x) => x.status !== 'info').length;
-    nodes.push(h('div', { class: 'folds' },
+    nodes.push(h('div', {},
       fold('Email to the vendor', mail(cm.vendor)),
       fold('Note for our team', mail(cm.internal)),
       fold(`All ${nChecks} checks`, h('div', { class: 'plist' }, r.findings.filter((x) => x.status !== 'info').map((x) => h('div', { class: 'ck ' + x.status }, icon(x.status), h('div', {}, h('div', { class: 'ck-t' }, x.title), h('div', { class: 'ck-d' }, brief(x.message))))))),
@@ -417,42 +429,47 @@
     return h('div', { class: 'diff' }, `Fixed ${plural(fixed, 'issue')} from ${prev.caseId}.`);
   }
 
-  function resubmit(rec) {
-    closeDrawer(); go('process');
+  function resubmit(rec, useCorrected) {
+    closeDrawer();
     const sc = SCN.find((x) => x.key === rec.scenarioKey);
-    if (!sc || !sc.corrected) return;
-    setEditor(JSON.parse(JSON.stringify(sc.corrected)), { key: rec.scenarioKey, parent: rec.caseId });
-    startRun();
+    const sub = useCorrected && sc && sc.corrected ? sc.corrected : rec.result.submission;
+    setEditor(JSON.parse(JSON.stringify(sub)), { key: rec.scenarioKey || 'custom', parent: rec.caseId, modified: !useCorrected });
+    window.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+    if (useCorrected) startRun();
   }
 
-  /* ============================ DASHBOARD ========================== */
-  const viewDash = $('#view-dashboard');
-  function renderDashboard() {
+  /* ----- cases ----- */
+  function buildCasesPanel() {
+    refs.counts = h('div', { class: 'counts' });
+    refs.filters = h('div', { class: 'filters' });
+    refs.casesBody = h('div', {});
+    return h('section', { class: 'panel', 'aria-label': 'Cases' },
+      h('div', { class: 'panel-h cases-h' }, h('h2', {}, 'Cases'), refs.counts, refs.filters),
+      refs.casesBody);
+  }
+  function renderCases() {
     const cs = state.cases, total = cs.length;
     const n = (st) => cs.filter((c) => statusOf(c) === st).length;
-    const kpi = (l, v, cls) => h('div', { class: 'card kpi ' + (cls || '') }, h('div', { class: 'v' }, v), h('div', { class: 'l' }, l));
+    refs.counts.textContent = '';
+    refs.counts.append(h('span', { class: 'pill neutral' }, `${total} total`), h('span', { class: 'pill ok' }, `${n('approved')} approved`), h('span', { class: 'pill warn' }, `${n('pending')} pending`), h('span', { class: 'pill bad' }, `${n('rejected')} rejected`));
+    refs.filters.textContent = '';
+    for (const [k, l] of [['all', 'All'], ['approved', 'Approved'], ['pending', 'Pending'], ['rejected', 'Rejected']]) refs.filters.append(h('button', { type: 'button', 'aria-pressed': String(state.filter === k), onclick: () => { state.filter = k; renderCases(); } }, l));
     const shown = cs.filter((c) => state.filter === 'all' || statusOf(c) === state.filter).slice().reverse();
-    const fbtn = (k, l, c) => h('button', { type: 'button', 'aria-pressed': String(state.filter === k), onclick: () => { state.filter = k; renderDashboard(); } }, `${l} ${c}`);
-    viewDash.textContent = '';
-    viewDash.append(
-      h('div', { class: 'page-h' }, h('h1', {}, 'Dashboard')),
-      h('div', { class: 'kpis' }, kpi('Cases', total), kpi('Approved', n('approved'), 'ok'), kpi('Pending', n('pending'), 'warn'), kpi('Rejected', n('rejected'), 'bad')),
-      h('div', { class: 'card' },
-        h('div', { class: 'filters' }, fbtn('all', 'All', total), fbtn('approved', 'Approved', n('approved')), fbtn('pending', 'Pending', n('pending')), fbtn('rejected', 'Rejected', n('rejected'))),
-        shown.length ? h('div', { class: 'twrap' }, h('table', { class: 'cases' },
-          h('thead', {}, h('tr', {}, ['Case', 'Vendor', 'Status', 'Main reason', 'When'].map((x) => h('th', { scope: 'col' }, x)))),
-          h('tbody', {}, shown.map((c) => {
-            const d = c.result.decision, first = c.result.findings.find((f) => f.status === 'fail') || c.result.findings.find((f) => f.status === 'warn');
-            const open = () => openDrawer(c.caseId);
-            return h('tr', { tabindex: '0', onclick: open, onkeydown: (e) => { if (e.key === 'Enter') open(); } },
-              h('td', {}, h('span', { class: 'chip' }, c.caseId), c.attempt > 1 ? h('span', { class: 'tag' }, 'attempt ' + c.attempt) : null),
-              h('td', {}, vendorName(c)), h('td', {}, statusPill(d)),
-              h('td', { class: 'cell-main' }, d.status === 'approved' ? (d.sub === 'with_notes' ? 'Passed, with notes' : 'All checks passed') : first ? first.title : 'All checks passed'),
-              h('td', { class: 'muted' }, fmtWhen(c.receivedAt)));
-          })))) : h('div', { class: 'empty' }, 'No cases yet.')));
+    refs.casesBody.textContent = '';
+    refs.casesBody.append(shown.length ? h('div', { class: 'twrap' }, h('table', { class: 'cases' },
+      h('thead', {}, h('tr', {}, ['Case', 'Vendor', 'Status', 'Main reason', 'When'].map((x) => h('th', { scope: 'col' }, x)))),
+      h('tbody', {}, shown.map((c) => {
+        const d = c.result.decision, first = c.result.findings.find((f) => f.status === 'fail') || c.result.findings.find((f) => f.status === 'warn');
+        const open = () => openDrawer(c.caseId);
+        return h('tr', { tabindex: '0', onclick: open, onkeydown: (e) => { if (e.key === 'Enter') open(); } },
+          h('td', {}, h('span', { class: 'chip' }, c.caseId), c.attempt > 1 ? h('span', { class: 'tag' }, 'attempt ' + c.attempt) : null, c.seed ? h('span', { class: 'tag' }, 'sample') : null),
+          h('td', {}, vendorName(c)), h('td', {}, statusPill(d)),
+          h('td', { class: 'cell-main' }, d.status === 'approved' ? (d.sub === 'with_notes' ? 'Passed, with notes' : 'All checks passed') : first ? first.title : 'All checks passed'),
+          h('td', { class: 'muted' }, fmtWhen(c.receivedAt)));
+      })))) : h('div', { class: 'empty' }, 'No cases yet.'));
   }
 
-  /* ---- drawer ---- */
+  /* ----- drawer ----- */
   const drawerRoot = $('#drawer-root');
   function openDrawer(id) {
     const rec = findCase(id); if (!rec) return;
@@ -461,60 +478,44 @@
     const closeBtn = h('button', { class: 'btn sm', type: 'button', onclick: closeDrawer }, 'Close');
     drawerRoot.append(h('div', { class: 'scrim', onclick: closeDrawer }), h('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Case ' + id },
       h('div', { class: 'drawer-h' }, h('b', {}, vendorName(rec)), closeBtn),
-      h('div', { class: 'drawer-b' }, h('div', { class: 'card result' }, ...resultNodes(rec, { onResubmit: true })))));
+      h('div', { class: 'drawer-b' }, h('div', { class: 'result' }, ...resultNodes(rec)))));
     closeBtn.focus();
   }
   function closeDrawer() { state.drawerCase = null; drawerRoot.textContent = ''; }
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.drawerCase) closeDrawer(); });
 
-  /* ============================ HOW IT WORKS ======================= */
-  const viewMap = $('#view-process-map');
-  function renderMap() {
-    const label = { reject: 'Reject', 'pending-vendor': 'Ask vendor', 'pending-internal': 'Send to review', note: 'Note only' };
-    viewMap.textContent = '';
-    viewMap.append(
-      h('div', { class: 'page-h' }, h('h1', {}, 'How it works')),
-      h('div', { class: 'flow' }, Engine.STAGES.map((s, i) => h('div', { class: 'st' }, h('span', { class: 'no' }, i + 1), h('b', {}, s.name)))),
-      h('div', { class: 'card', style: 'margin-bottom:16px' }, h('div', { class: 'card-b' }, h('div', { class: 'decision-rows' },
-        h('div', {}, h('span', { class: 'pill bad' }, 'Rejected'), h('span', {}, 'A hard rule fails: watchlist, duplicate vendor, or a bank account owned by another vendor.')),
-        h('div', {}, h('span', { class: 'pill warn' }, 'Pending'), h('span', {}, 'Something is wrong. The vendor can fix it, or a person must review it.')),
-        h('div', {}, h('span', { class: 'pill ok' }, 'Approved'), h('span', {}, 'No failures. Small notes are logged.'))))),
-      h('div', { class: 'card', style: 'margin-bottom:16px' }, h('div', { class: 'card-h' }, h('h2', {}, 'Rules'), h('span', { class: 'muted' }, `${Engine.RULES.length} checks`)), h('div', { class: 'card-b twrap' },
-        h('table', { class: 'mini' }, h('tbody', {}, Engine.RULES.map((r) => h('tr', {}, h('td', {}, r.title), h('td', { style: 'text-align:right' }, h('span', { class: 'onfail ' + r.onFail }, label[r.onFail])))))))),
-      h('div', { class: 'card' }, h('div', { class: 'card-b' }, h('details', { class: 'fold plain' }, h('summary', {}, 'Assumptions'), h('div', { class: 'fold-body' }, h('div', { class: 'prose' }, h('ul', {},
-        h('li', {}, 'Rules decide, not a model, so every verdict can be audited.'),
-        h('li', {}, 'Documents arrive as already-extracted fields.'),
-        h('li', {}, 'Full rules for India, US, UK and Germany. Other countries go to a person.'),
-        h('li', {}, 'Vendor master and watchlist are fictional demo data.'),
-        h('li', {}, 'Nothing is emailed. Data stays in this browser.'))))))));
+  /* ----- how it works ----- */
+  function buildHow() {
+    const label = { reject: 'Reject', 'pending-vendor': 'Ask the vendor', 'pending-internal': 'Send to a person', note: 'Note only' };
+    return h('details', { class: 'panel how' }, h('summary', {}, 'How it works'),
+      h('div', { class: 'how-body' },
+        h('div', { class: 'flow' }, Engine.STAGES.map((s, i) => h('div', { class: 'st' }, h('span', { class: 'no' }, i + 1), h('b', { style: 'font-weight:500' }, s.name)))),
+        h('div', { class: 'decision-rows' },
+          h('div', {}, h('span', { class: 'pill bad' }, 'Rejected'), h('span', {}, 'A hard rule fails: watchlist, duplicate vendor, or a bank account owned by another vendor.')),
+          h('div', {}, h('span', { class: 'pill warn' }, 'Pending'), h('span', {}, 'Something is wrong. The vendor can fix it, or a person must review it.')),
+          h('div', {}, h('span', { class: 'pill ok' }, 'Approved'), h('span', {}, 'No failures. Small notes are logged.'))),
+        h('div', { class: 'cols2' },
+          h('div', {}, h('h3', { style: 'margin-bottom:8px;font-size:14px' }, `Rules (${Engine.RULES.length})`),
+            h('table', { class: 'mini' }, h('tbody', {}, Engine.RULES.map((r) => h('tr', {}, h('td', {}, r.title), h('td', { style: 'text-align:right' }, h('span', { class: 'onfail ' + r.onFail }, label[r.onFail]))))))),
+          h('div', { class: 'prose' }, h('h3', { style: 'margin-bottom:8px;font-size:14px' }, 'Assumptions'), h('ul', {},
+            h('li', {}, 'Rules decide, not a model, so every verdict can be audited.'),
+            h('li', {}, 'Documents arrive as already-extracted fields.'),
+            h('li', {}, 'Full rules for India, US, UK and Germany. Other countries go to a person.'),
+            h('li', {}, 'Vendor master and watchlist are fictional demo data.'),
+            h('li', {}, 'Nothing is emailed. Data stays in this browser.'))))));
   }
 
   /* ============================ shell ============================== */
-  const views = { process: viewProcess, dashboard: viewDash, 'process-map': viewMap };
-  function go(v) {
-    state.view = v;
-    for (const [k, el] of Object.entries(views)) el.hidden = k !== v;
-    document.querySelectorAll('.nav button').forEach((b) => (b.dataset.view === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
-    if (v === 'dashboard') renderDashboard();
-    if (location.hash !== '#' + v) { try { history.replaceState(null, '', '#' + v); } catch (e) { location.hash = v; } }
-    window.scrollTo(0, 0);
-  }
-  function updateNav() { $('#nav-count').textContent = state.cases.length; }
-  document.querySelectorAll('.nav button').forEach((b) => b.addEventListener('click', () => go(b.dataset.view)));
-  window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (views[v] && v !== state.view) go(v); });
-
   const resetBtn = $('#reset-btn'); let resetTimer = null;
   resetBtn.addEventListener('click', () => {
     if (!resetBtn.dataset.armed) { resetBtn.dataset.armed = '1'; resetBtn.textContent = 'Click again to confirm'; resetTimer = setTimeout(() => { delete resetBtn.dataset.armed; resetBtn.textContent = 'Reset demo'; }, 3500); return; }
     clearTimeout(resetTimer); delete resetBtn.dataset.armed; resetBtn.textContent = 'Reset demo';
     state.runToken++; state.running = false; state.parent = null;
-    seed(); updateNav(); closeDrawer(); buildProcess(); loadScenario('S0'); renderDashboard();
+    seed(); closeDrawer(); buildPage(); setEditor(blankSubmission(), { key: 'custom', parent: null });
   });
 
-  buildProcess(); renderMap(); renderDashboard(); updateNav();
-  loadScenario('S0');
-  const start = location.hash.slice(1);
-  go(views[start] ? start : 'process');
+  buildPage();
+  setEditor(blankSubmission(), { key: 'custom', parent: null });
 
-  window.__vod = { state, startRun, loadScenario, go, openDrawer };
+  window.__vod = { state, startRun, loadScenario, setEditor, openDrawer };
 })();
