@@ -227,6 +227,63 @@ table.cases tbody tr:hover { background: var(--accent-soft); }
 .prose ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
 .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 @media (max-width: 900px) { .cols2 { grid-template-columns: 1fr; } }
+
+/* ---------- polish: depth, gradients, progress ---------- */
+:root { --accent-2: #B79CFF; --grad: linear-gradient(135deg, #86A5FF 0%, #B79CFF 100%); }
+body { background:
+  radial-gradient(900px 480px at 8% -8%, rgba(134,165,255,.18), transparent 60%),
+  radial-gradient(800px 460px at 100% 0%, rgba(183,156,255,.14), transparent 60%),
+  radial-gradient(700px 500px at 50% 110%, rgba(95,208,147,.07), transparent 60%),
+  var(--bg); background-attachment: fixed; }
+.topbar { background: rgba(21,28,39,.78); backdrop-filter: blur(10px); }
+.brand-mark { background: var(--grad); box-shadow: 0 4px 14px rgba(134,165,255,.35); }
+.brand span { background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; font-size: 15px; letter-spacing: .01em; }
+.panel { position: relative; background: linear-gradient(180deg, rgba(255,255,255,.035), rgba(255,255,255,0) 120px), var(--surface); border-color: #2A3548; }
+.panel::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--grad); opacity: .9; }
+.run-panel::before { background: linear-gradient(90deg, #5FD093, #86A5FF); }
+.cases-panel::before { background: linear-gradient(90deg, #B79CFF, #F0B34F); }
+.panel-h h2 { display: flex; align-items: center; gap: 10px; }
+.panel-h h2 .hico { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); }
+.run-panel .hico { background: var(--ok-bg); color: var(--ok); }
+.cases-panel .hico { background: #2A2145; color: var(--accent-2); }
+.btn.primary { background: var(--grad); border-color: transparent; box-shadow: 0 6px 18px rgba(134,165,255,.28); transition: transform .12s, box-shadow .12s; }
+.btn.primary:hover { background: var(--grad); filter: brightness(1.08); transform: translateY(-1px); box-shadow: 0 10px 24px rgba(134,165,255,.38); }
+.btn.primary[disabled] { box-shadow: none; transform: none; }
+.seg button[aria-pressed="true"], .filters button[aria-pressed="true"] { background: var(--grad); border-color: transparent; }
+.fh { display: flex; align-items: center; gap: 8px; color: var(--ink-2); }
+.fh::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--grad); }
+.fh::after { content: ''; flex: 1; height: 1px; background: var(--line); }
+.fld input:focus, .fld select:focus { outline: 2px solid var(--accent); box-shadow: 0 0 0 4px rgba(134,165,255,.15); }
+
+/* stage progress bar */
+.progress { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; margin: 0 0 14px; }
+.progress i { height: 6px; border-radius: 99px; background: var(--line); transition: background .3s, box-shadow .3s; }
+.progress i.running { background: var(--accent); box-shadow: 0 0 10px rgba(134,165,255,.7); animation: pulse 1s ease-in-out infinite; }
+.progress i.ok { background: var(--ok); } .progress i.note { background: #D9C25A; } .progress i.action { background: var(--warn); } .progress i.block { background: var(--bad); }
+@keyframes pulse { 50% { opacity: .5; } }
+.stage-head { border: 1px solid transparent; }
+.stage[data-state="running"] .stage-head { background: var(--accent-soft); border-color: rgba(134,165,255,.35); }
+.stage[data-state="running"] .stage-name { color: var(--ink); }
+.empty-run { display: grid; justify-items: center; gap: 6px; text-align: center; padding: 8px 12px 18px; color: var(--ink-3); }
+.empty-run[hidden] { display: none; }
+.empty-run .big-ic { width: 56px; height: 56px; border-radius: 16px; display: grid; place-items: center; background: var(--grad); color: var(--accent-ink); box-shadow: 0 10px 30px rgba(134,165,255,.3); margin-bottom: 4px; }
+.empty-run b { color: var(--ink); font-size: 15px; }
+
+/* verdict */
+.verdict { grid-template-columns: auto 1fr auto; align-items: center; position: relative; overflow: hidden; }
+.verdict::after { content: ''; position: absolute; inset: 0; background: radial-gradient(420px 160px at 0% 0%, rgba(255,255,255,.08), transparent 70%); pointer-events: none; }
+.vicon { width: 52px; height: 52px; border-radius: 16px; display: grid; place-items: center; font-size: 28px; font-weight: 700; color: #0D121A; background: currentColor; position: relative; z-index: 1; }
+.vicon span { color: #0D121A; line-height: 1; }
+.verdict.ok .vicon { color: var(--ok); box-shadow: 0 0 28px rgba(95,208,147,.4); } .verdict.warn .vicon { color: var(--warn); box-shadow: 0 0 28px rgba(240,179,79,.4); } .verdict.bad .vicon { color: var(--bad); box-shadow: 0 0 28px rgba(255,142,139,.4); }
+.verdict > div { position: relative; z-index: 1; }
+@media (max-width: 640px) { .verdict { grid-template-columns: auto 1fr; } .verdict .meta { grid-column: 1 / -1; } }
+
+/* cases */
+.avatar { width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700; color: #0D121A; margin-right: 10px; vertical-align: middle; flex: none; }
+.pill::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.pill.neutral::before { display: none; }
+.counts .pill { font-size: 12.5px; padding: 3px 11px; }
+table.cases tbody tr:hover { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--accent); }
 </style>
 </head>
 <body>
@@ -1071,6 +1128,11 @@ if (typeof module !== 'undefined') module.exports = Data;
   const root = $('#app');
   const refs = {};
 
+  const hico = (p) => h('span', { class: 'hico', html: '<svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>' });
+  const ICO_FORM = '<path d="M3 3.5h10M3 8h10M3 12.5h6"/>', ICO_RUN = '<path d="M3 8h3l2-4 2 8 2-4h1"/>', ICO_CASES = '<rect x="2.5" y="3" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M6 6.5V13"/>';
+  const hue = (s) => { let x = 0; for (const c of String(s)) x = (x * 31 + c.charCodeAt(0)) % 360; return x; };
+  const avatar = (name) => h('span', { class: 'avatar', style: `background:hsl(${hue(name)} 70% 72%)` }, (String(name).match(/[A-Za-z0-9]/g) || ['?']).slice(0, 2).join('').toUpperCase());
+
   function buildPage() {
     root.textContent = '';
     root.append(
@@ -1103,7 +1165,7 @@ if (typeof module !== 'undefined') module.exports = Data;
     refs.runBtn = h('button', { class: 'btn primary wide', type: 'button', id: 'run-btn', onclick: startRun }, 'Run checks');
 
     return h('section', { class: 'panel form-panel', 'aria-label': 'New vendor submission' },
-      h('div', { class: 'panel-h' }, h('h2', {}, 'New vendor submission')),
+      h('div', { class: 'panel-h' }, h('h2', {}, hico(ICO_FORM), 'New vendor submission')),
       h('div', { class: 'toolbar' },
         h('label', { class: 'btn sm', for: 'file-in', tabindex: '0', role: 'button', onkeydown: (e) => { if (e.key === 'Enter') fileInput.click(); } }, 'Import JSON'), fileInput,
         h('button', { class: 'btn sm', type: 'button', onclick: () => setEditor(blankSubmission(), { key: 'custom', parent: null, resetScroll: true }) }, 'Clear form')),
@@ -1221,9 +1283,11 @@ if (typeof module !== 'undefined') module.exports = Data;
     refs.speed = h('div', { class: 'seg', role: 'group', 'aria-label': 'Run speed' });
     refs.result = h('div', { class: 'result', hidden: true, 'aria-live': 'polite' });
     refs.stageWrap = h('div', { class: 'stages' });
-    refs.runBody = h('div', { class: 'panel-body' }, refs.result, refs.stageWrap);
+    refs.progress = h('div', { class: 'progress', 'aria-hidden': 'true' }, Engine.STAGES.map(() => h('i', {})));
+    refs.empty = h('div', { class: 'empty-run' }, h('div', { class: 'big-ic', html: '<svg class="ic" style="width:28px;height:28px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + ICO_RUN + '</svg>' }), h('b', {}, 'Ready for a vendor'), h('span', {}, 'Submit the form and the seven checks run here, one by one.'));
+    refs.runBody = h('div', { class: 'panel-body' }, refs.empty, refs.progress, refs.result, refs.stageWrap);
     return h('section', { class: 'panel run-panel', 'aria-label': 'Live run' },
-      h('div', { class: 'panel-h' }, h('h2', {}, 'Live run'), h('div', { class: 'actions', style: 'align-items:center' }, refs.runMeta, refs.speed)),
+      h('div', { class: 'panel-h' }, h('h2', {}, hico(ICO_RUN), 'Live run'), h('div', { class: 'actions', style: 'align-items:center' }, refs.runMeta, refs.speed)),
       refs.runBody);
   }
   function renderSpeed() {
@@ -1246,8 +1310,11 @@ if (typeof module !== 'undefined') module.exports = Data;
       refs.stageWrap.append(el);
     });
   }
+  function setProgress() { [...refs.progress.children].forEach((el, i) => { const s = Object.values(refs.stages)[i]; el.className = s && s.el.dataset.state !== 'idle' ? s.el.dataset.state : ''; }); }
   function resetStages() {
+    refs.empty.hidden = false;
     for (const s of Object.values(refs.stages)) { s.el.dataset.state = 'idle'; s.el.classList.remove('open'); s.checks.textContent = ''; s.count.textContent = ''; s.dot.textContent = String(s.idx); s.head.setAttribute('aria-expanded', 'false'); }
+    setProgress();
   }
   function stageState(checks) {
     if (checks.some((c) => c.status === 'fail' && c.severity === 'blocker')) return 'block';
@@ -1277,7 +1344,7 @@ if (typeof module !== 'undefined') module.exports = Data;
       if (token !== state.runToken) return;
       const meta = Engine.STAGES[run.state.idx], s = refs.stages[meta.id];
       s.el.dataset.state = 'running'; s.el.classList.add('open'); s.head.setAttribute('aria-expanded', 'true');
-      s.count.textContent = 'running…';
+      s.count.textContent = 'running…'; refs.empty.hidden = true; setProgress();
       await sleep(sp.stage);
       const res = run.next();
       for (const c of res.checks) { s.checks.append(checkRow(c)); if (sp.check) await sleep(sp.check); }
@@ -1287,6 +1354,7 @@ if (typeof module !== 'undefined') module.exports = Data;
       s.el.dataset.state = meta.id === 'decision' || meta.id === 'communicate' ? 'ok' : stageState(res.checks);
       const st = s.el.dataset.state;
       s.dot.textContent = st === 'ok' || st === 'note' ? '✓' : st === 'action' ? '!' : st === 'block' ? '×' : String(s.idx);
+      setProgress();
       if ((st === 'ok' || st === 'note') && meta.id !== 'decision') { s.el.classList.remove('open'); s.head.setAttribute('aria-expanded', 'false'); }
     }
     if (token !== state.runToken) return;
@@ -1316,6 +1384,7 @@ if (typeof module !== 'undefined') module.exports = Data;
     const nodes = [];
     const sub = d.status === 'pending' ? statusLabel(d) : d.status === 'approved' && d.sub === 'with_notes' ? 'With notes' : '';
     nodes.push(h('div', { class: 'verdict ' + tone },
+      h('div', { class: 'vicon' }, h('span', {}, d.status === 'approved' ? '✓' : d.status === 'rejected' ? '×' : '!')),
       h('div', {}, sub ? h('div', { class: 'sub' }, sub) : null, h('div', { class: 'big' }, d.status[0].toUpperCase() + d.status.slice(1)), h('p', { class: 'headline' }, d.headline)),
       h('div', { class: 'meta' }, h('span', { class: 'mono' }, rec.caseId + (rec.attempt > 1 ? ' · attempt ' + rec.attempt : '')), h('span', {}, 'Risk ' + d.risk + ' · ' + riskBand(d.risk)), r.vendorId ? h('span', { class: 'mono' }, r.vendorId) : null)));
 
@@ -1375,8 +1444,8 @@ if (typeof module !== 'undefined') module.exports = Data;
     refs.counts = h('div', { class: 'counts' });
     refs.filters = h('div', { class: 'filters' });
     refs.casesBody = h('div', {});
-    return h('section', { class: 'panel', 'aria-label': 'Cases' },
-      h('div', { class: 'panel-h cases-h' }, h('h2', {}, 'Cases'), refs.counts, refs.filters),
+    return h('section', { class: 'panel cases-panel', 'aria-label': 'Cases' },
+      h('div', { class: 'panel-h cases-h' }, h('h2', {}, hico(ICO_CASES), 'Cases'), refs.counts, refs.filters),
       refs.casesBody);
   }
   function renderCases() {
@@ -1395,7 +1464,7 @@ if (typeof module !== 'undefined') module.exports = Data;
         const open = () => openDrawer(c.caseId);
         return h('tr', { tabindex: '0', onclick: open, onkeydown: (e) => { if (e.key === 'Enter') open(); } },
           h('td', {}, h('span', { class: 'chip' }, c.caseId), c.attempt > 1 ? h('span', { class: 'tag' }, 'attempt ' + c.attempt) : null, null),
-          h('td', {}, vendorName(c)), h('td', {}, statusPill(d)),
+          h('td', {}, avatar(vendorName(c)), vendorName(c)), h('td', {}, statusPill(d)),
           h('td', { class: 'cell-main' }, d.status === 'approved' ? (d.sub === 'with_notes' ? 'Passed, with notes' : 'All checks passed') : first ? first.title : 'All checks passed'),
           h('td', { class: 'muted' }, fmtWhen(c.receivedAt)));
       })))) : h('div', { class: 'empty' }, 'No cases yet.'));

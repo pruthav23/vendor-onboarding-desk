@@ -123,6 +123,11 @@
   const root = $('#app');
   const refs = {};
 
+  const hico = (p) => h('span', { class: 'hico', html: '<svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + p + '</svg>' });
+  const ICO_FORM = '<path d="M3 3.5h10M3 8h10M3 12.5h6"/>', ICO_RUN = '<path d="M3 8h3l2-4 2 8 2-4h1"/>', ICO_CASES = '<rect x="2.5" y="3" width="11" height="10" rx="1.5"/><path d="M2.5 6.5h11M6 6.5V13"/>';
+  const hue = (s) => { let x = 0; for (const c of String(s)) x = (x * 31 + c.charCodeAt(0)) % 360; return x; };
+  const avatar = (name) => h('span', { class: 'avatar', style: `background:hsl(${hue(name)} 70% 72%)` }, (String(name).match(/[A-Za-z0-9]/g) || ['?']).slice(0, 2).join('').toUpperCase());
+
   function buildPage() {
     root.textContent = '';
     root.append(
@@ -155,7 +160,7 @@
     refs.runBtn = h('button', { class: 'btn primary wide', type: 'button', id: 'run-btn', onclick: startRun }, 'Run checks');
 
     return h('section', { class: 'panel form-panel', 'aria-label': 'New vendor submission' },
-      h('div', { class: 'panel-h' }, h('h2', {}, 'New vendor submission')),
+      h('div', { class: 'panel-h' }, h('h2', {}, hico(ICO_FORM), 'New vendor submission')),
       h('div', { class: 'toolbar' },
         h('label', { class: 'btn sm', for: 'file-in', tabindex: '0', role: 'button', onkeydown: (e) => { if (e.key === 'Enter') fileInput.click(); } }, 'Import JSON'), fileInput,
         h('button', { class: 'btn sm', type: 'button', onclick: () => setEditor(blankSubmission(), { key: 'custom', parent: null, resetScroll: true }) }, 'Clear form')),
@@ -273,9 +278,11 @@
     refs.speed = h('div', { class: 'seg', role: 'group', 'aria-label': 'Run speed' });
     refs.result = h('div', { class: 'result', hidden: true, 'aria-live': 'polite' });
     refs.stageWrap = h('div', { class: 'stages' });
-    refs.runBody = h('div', { class: 'panel-body' }, refs.result, refs.stageWrap);
+    refs.progress = h('div', { class: 'progress', 'aria-hidden': 'true' }, Engine.STAGES.map(() => h('i', {})));
+    refs.empty = h('div', { class: 'empty-run' }, h('div', { class: 'big-ic', html: '<svg class="ic" style="width:28px;height:28px" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' + ICO_RUN + '</svg>' }), h('b', {}, 'Ready for a vendor'), h('span', {}, 'Submit the form and the seven checks run here, one by one.'));
+    refs.runBody = h('div', { class: 'panel-body' }, refs.empty, refs.progress, refs.result, refs.stageWrap);
     return h('section', { class: 'panel run-panel', 'aria-label': 'Live run' },
-      h('div', { class: 'panel-h' }, h('h2', {}, 'Live run'), h('div', { class: 'actions', style: 'align-items:center' }, refs.runMeta, refs.speed)),
+      h('div', { class: 'panel-h' }, h('h2', {}, hico(ICO_RUN), 'Live run'), h('div', { class: 'actions', style: 'align-items:center' }, refs.runMeta, refs.speed)),
       refs.runBody);
   }
   function renderSpeed() {
@@ -298,8 +305,11 @@
       refs.stageWrap.append(el);
     });
   }
+  function setProgress() { [...refs.progress.children].forEach((el, i) => { const s = Object.values(refs.stages)[i]; el.className = s && s.el.dataset.state !== 'idle' ? s.el.dataset.state : ''; }); }
   function resetStages() {
+    refs.empty.hidden = false;
     for (const s of Object.values(refs.stages)) { s.el.dataset.state = 'idle'; s.el.classList.remove('open'); s.checks.textContent = ''; s.count.textContent = ''; s.dot.textContent = String(s.idx); s.head.setAttribute('aria-expanded', 'false'); }
+    setProgress();
   }
   function stageState(checks) {
     if (checks.some((c) => c.status === 'fail' && c.severity === 'blocker')) return 'block';
@@ -329,7 +339,7 @@
       if (token !== state.runToken) return;
       const meta = Engine.STAGES[run.state.idx], s = refs.stages[meta.id];
       s.el.dataset.state = 'running'; s.el.classList.add('open'); s.head.setAttribute('aria-expanded', 'true');
-      s.count.textContent = 'running…';
+      s.count.textContent = 'running…'; refs.empty.hidden = true; setProgress();
       await sleep(sp.stage);
       const res = run.next();
       for (const c of res.checks) { s.checks.append(checkRow(c)); if (sp.check) await sleep(sp.check); }
@@ -339,6 +349,7 @@
       s.el.dataset.state = meta.id === 'decision' || meta.id === 'communicate' ? 'ok' : stageState(res.checks);
       const st = s.el.dataset.state;
       s.dot.textContent = st === 'ok' || st === 'note' ? '✓' : st === 'action' ? '!' : st === 'block' ? '×' : String(s.idx);
+      setProgress();
       if ((st === 'ok' || st === 'note') && meta.id !== 'decision') { s.el.classList.remove('open'); s.head.setAttribute('aria-expanded', 'false'); }
     }
     if (token !== state.runToken) return;
@@ -368,6 +379,7 @@
     const nodes = [];
     const sub = d.status === 'pending' ? statusLabel(d) : d.status === 'approved' && d.sub === 'with_notes' ? 'With notes' : '';
     nodes.push(h('div', { class: 'verdict ' + tone },
+      h('div', { class: 'vicon' }, h('span', {}, d.status === 'approved' ? '✓' : d.status === 'rejected' ? '×' : '!')),
       h('div', {}, sub ? h('div', { class: 'sub' }, sub) : null, h('div', { class: 'big' }, d.status[0].toUpperCase() + d.status.slice(1)), h('p', { class: 'headline' }, d.headline)),
       h('div', { class: 'meta' }, h('span', { class: 'mono' }, rec.caseId + (rec.attempt > 1 ? ' · attempt ' + rec.attempt : '')), h('span', {}, 'Risk ' + d.risk + ' · ' + riskBand(d.risk)), r.vendorId ? h('span', { class: 'mono' }, r.vendorId) : null)));
 
@@ -427,8 +439,8 @@
     refs.counts = h('div', { class: 'counts' });
     refs.filters = h('div', { class: 'filters' });
     refs.casesBody = h('div', {});
-    return h('section', { class: 'panel', 'aria-label': 'Cases' },
-      h('div', { class: 'panel-h cases-h' }, h('h2', {}, 'Cases'), refs.counts, refs.filters),
+    return h('section', { class: 'panel cases-panel', 'aria-label': 'Cases' },
+      h('div', { class: 'panel-h cases-h' }, h('h2', {}, hico(ICO_CASES), 'Cases'), refs.counts, refs.filters),
       refs.casesBody);
   }
   function renderCases() {
@@ -447,7 +459,7 @@
         const open = () => openDrawer(c.caseId);
         return h('tr', { tabindex: '0', onclick: open, onkeydown: (e) => { if (e.key === 'Enter') open(); } },
           h('td', {}, h('span', { class: 'chip' }, c.caseId), c.attempt > 1 ? h('span', { class: 'tag' }, 'attempt ' + c.attempt) : null, null),
-          h('td', {}, vendorName(c)), h('td', {}, statusPill(d)),
+          h('td', {}, avatar(vendorName(c)), vendorName(c)), h('td', {}, statusPill(d)),
           h('td', { class: 'cell-main' }, d.status === 'approved' ? (d.sub === 'with_notes' ? 'Passed, with notes' : 'All checks passed') : first ? first.title : 'All checks passed'),
           h('td', { class: 'muted' }, fmtWhen(c.receivedAt)));
       })))) : h('div', { class: 'empty' }, 'No cases yet.'));
