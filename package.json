@@ -1,0 +1,10 @@
+{
+  "name": "vendor-onboarding-desk",
+  "version": "1.0.0",
+  "description": "Vendor onboarding process: validate a vendor submission and decide approved, pending or rejected, with reasons.",
+  "private": true,
+  "scripts": {
+    "build": "node build.js",
+    "test": "node tests/run.js"
+  }
+}

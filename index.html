@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vendor Onboarding Desk</title>
+<meta name="description" content="Vendor onboarding process: submit a vendor, watch it run, get an approved, pending or rejected decision with reasons.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23101A2B'/%3E%3Cpath d='M9 16.5l5 5 9-10' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a calm operations desk. Fixed top bar, then either a two-column Process view
+   (submission on the left, live run and result on the right) or full-width dashboard/map pages. */
+:root {
+  --bg: #F1F3F6; --surface: #FFFFFF; --surface-2: #F6F8FA; --ink: #101A2B; --ink-2: #46526A; --ink-3: #74809A;
+  --line: #DCE1EA; --line-2: #E9EDF3; --accent: #2750C8; --accent-ink: #FFFFFF; --accent-soft: #E6ECFB;
+  --ok: #17794C; --ok-bg: #E3F3EA; --warn: #8F5A00; --warn-bg: #FCF0D9; --bad: #B02A2A; --bad-bg: #FBE6E5;
+  --shadow: 0 1px 2px rgba(16,26,43,.06), 0 6px 20px rgba(16,26,43,.05);
+  --sans: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D121A; --surface: #151C27; --surface-2: #1A2230; --ink: #E8ECF3; --ink-2: #AAB4C6; --ink-3: #7C889C;
+    --line: #263042; --line-2: #1E2736; --accent: #86A5FF; --accent-ink: #0D121A; --accent-soft: #1C2849;
+    --ok: #5FD093; --ok-bg: #12301F; --warn: #F0B34F; --warn-bg: #33270F; --bad: #FF8E8B; --bad-bg: #3B1818;
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.3); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D121A; --surface: #151C27; --surface-2: #1A2230; --ink: #E8ECF3; --ink-2: #AAB4C6; --ink-3: #7C889C;
+  --line: #263042; --line-2: #1E2736; --accent: #86A5FF; --accent-ink: #0D121A; --accent-soft: #1C2849;
+  --ok: #5FD093; --ok-bg: #12301F; --warn: #F0B34F; --warn-bg: #33270F; --bad: #FF8E8B; --bad-bg: #3B1818;
+  --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.3); color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+h1, h2, h3, h4 { margin: 0; text-wrap: balance; font-weight: 600; letter-spacing: -0.01em; }
+p { margin: 0; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.mono { font-family: var(--mono); font-size: 12.5px; }
+.muted { color: var(--ink-3); }
+.num { font-variant-numeric: tabular-nums; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+/* ---------- top bar ---------- */
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 24px; padding: 0 24px; height: 56px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 600; letter-spacing: -0.01em; white-space: nowrap; }
+.brand-mark { width: 26px; height: 26px; border-radius: 7px; background: var(--ink); color: var(--surface); display: grid; place-items: center; }
+.nav { display: flex; gap: 4px; height: 100%; }
+.nav button { background: none; border: 0; padding: 0 14px; height: 100%; color: var(--ink-2); font-weight: 500; border-bottom: 2px solid transparent; }
+.nav button:hover { color: var(--ink); }
+.nav button[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+.nav .count { margin-left: 6px; padding: 1px 7px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line); font-size: 11.5px; color: var(--ink-2); }
+.spacer { flex: 1; }
+.linkbtn { background: none; border: 0; padding: 6px 8px; color: var(--ink-3); font-size: 12.5px; border-radius: 6px; }
+.linkbtn:hover { color: var(--ink); background: var(--surface-2); }
+
+/* ---------- shared pieces ---------- */
+main { padding: 24px; max-width: 1440px; margin: 0 auto; }
+.view[hidden] { display: none; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+.card-h { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding: 16px 18px 0; }
+.card-h h2 { font-size: 15px; }
+.card-b { padding: 14px 18px 18px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; border: 1px solid transparent; }
+.pill.ok { background: var(--ok-bg); color: var(--ok); }
+.pill.warn { background: var(--warn-bg); color: var(--warn); }
+.pill.bad { background: var(--bad-bg); color: var(--bad); }
+.pill.neutral { background: var(--surface-2); color: var(--ink-2); border-color: var(--line); }
+.chip { display: inline-block; padding: 1px 7px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--line); font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 8px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-weight: 500; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn[disabled] { opacity: .55; cursor: not-allowed; }
+.btn.sm { padding: 4px 10px; font-size: 12.5px; }
+.ic { width: 16px; height: 16px; flex: none; }
+.ic.ok { color: var(--ok); } .ic.warn { color: var(--warn); } .ic.bad { color: var(--bad); } .ic.skip { color: var(--ink-3); } .ic.info { color: var(--accent); }
+
+/* ---------- process view ---------- */
+.process { display: grid; grid-template-columns: minmax(340px, 430px) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 1000px) { .process { grid-template-columns: 1fr; } main { padding: 16px; } .topbar { padding: 0 16px; gap: 12px; } .brand span { display: none; } }
+.scn-list { display: grid; gap: 6px; margin-bottom: 12px; }
+.scn { display: flex; align-items: center; gap: 10px; text-align: left; padding: 9px 11px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); width: 100%; }
+.scn:hover { background: var(--surface-2); }
+.scn[aria-checked="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.scn .kind { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; color: var(--ink-3); width: 44px; flex: none; }
+.scn[aria-checked="true"] .kind { color: var(--accent); }
+.scn .lab { font-weight: 500; flex: 1; }
+.scn .mod { font-size: 11px; color: var(--warn); }
+.blurb { padding: 10px 12px; border-left: 3px solid var(--accent); background: var(--surface-2); border-radius: 0 8px 8px 0; color: var(--ink-2); margin-bottom: 14px; }
+.tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.tabs button { background: none; border: 0; padding: 7px 12px; color: var(--ink-3); font-weight: 500; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.summary { display: grid; grid-template-columns: 112px 1fr; gap: 6px 12px; margin: 0; font-size: 13px; }
+.summary dt { color: var(--ink-3); } .summary dd { margin: 0; overflow-wrap: anywhere; }
+.summary .sec { grid-column: 1 / -1; margin-top: 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); font-weight: 600; }
+.docs { display: grid; gap: 4px; }
+.doc { display: flex; justify-content: space-between; gap: 8px; padding: 5px 8px; border: 1px solid var(--line-2); border-radius: 6px; background: var(--surface-2); font-size: 12.5px; }
+.editor { width: 100%; min-height: 300px; resize: vertical; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: 12.5px/1.55 var(--mono); tab-size: 2; }
+.editor-status { display: flex; justify-content: space-between; margin-top: 6px; font-size: 12px; }
+.tweaks { margin-top: 14px; }
+.tweaks h4 { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-3); margin-bottom: 6px; }
+.tweak-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.tweak-row button { padding: 4px 10px; border-radius: 999px; border: 1px dashed var(--line); background: none; font-size: 12.5px; color: var(--ink-2); }
+.tweak-row button:hover { border-style: solid; color: var(--ink); background: var(--surface-2); }
+.runbar { display: grid; gap: 10px; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.runbar .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg button { background: none; border: 0; padding: 4px 11px; font-size: 12.5px; color: var(--ink-2); }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--surface); }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; color: var(--ink-2); }
+.check input { margin-top: 3px; }
+.banner-info[hidden] { display: none; }
+.banner-info { display: flex; gap: 10px; align-items: center; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); color: var(--ink); font-size: 13px; margin-bottom: 12px; }
+
+/* run panel */
+.rightcol { display: grid; gap: 16px; min-width: 0; }
+.runhead { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; }
+.runhead h2 { font-size: 15px; }
+.stages { display: grid; gap: 0; padding: 4px 8px 10px; }
+.stage { border-radius: 8px; }
+.stage-head { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; cursor: pointer; }
+.stage-head:hover { background: var(--surface-2); }
+.stage-dot { width: 24px; height: 24px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 600; background: var(--surface-2); border: 1px solid var(--line); color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.stage-title { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.stage-title strong { font-weight: 500; }
+.stage-title span { font-size: 12.5px; }
+.stage-count { font-size: 12.5px; color: var(--ink-3); white-space: nowrap; }
+.stage[data-state="idle"] .stage-title strong { color: var(--ink-3); }
+.stage[data-state="running"] .stage-dot { border-color: var(--accent); color: var(--accent); position: relative; }
+.stage[data-state="running"] .stage-dot::after { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid transparent; border-top-color: var(--accent); animation: spin .8s linear infinite; }
+.stage[data-state="ok"] .stage-dot { background: var(--ok-bg); color: var(--ok); border-color: transparent; }
+.stage[data-state="note"] .stage-dot { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+.stage[data-state="action"] .stage-dot { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.stage[data-state="block"] .stage-dot { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.stage-checks { display: none; margin: 0 0 6px 46px; padding-left: 14px; border-left: 2px solid var(--line-2); }
+.stage.open .stage-checks { display: grid; gap: 2px; }
+.ck { display: grid; grid-template-columns: 16px 30px 1fr; gap: 8px; align-items: start; padding: 4px 0; font-size: 13px; animation: slide .22s ease-out; }
+.ck .ic { margin-top: 2px; }
+.ck .rid { font-family: var(--mono); font-size: 12px; color: var(--ink-3); padding-top: 1px; }
+.ck .msg { color: var(--ink-2); overflow-wrap: anywhere; }
+.ck.fail .msg, .ck.warn .msg { color: var(--ink); }
+@keyframes slide { from { opacity: 0; transform: translateY(-3px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .ck { animation: none; } .stage[data-state="running"] .stage-dot::after { animation-duration: 2s; } }
+
+/* result */
+.result[hidden] { display: none; }
+.verdict { display: grid; grid-template-columns: auto 1fr auto; gap: 18px; align-items: center; padding: 18px 20px; border-radius: 12px 12px 0 0; border-bottom: 1px solid var(--line); }
+.verdict.ok { background: var(--ok-bg); } .verdict.warn { background: var(--warn-bg); } .verdict.bad { background: var(--bad-bg); }
+.verdict .big { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.verdict.ok .big { color: var(--ok); } .verdict.warn .big { color: var(--warn); } .verdict.bad .big { color: var(--bad); }
+.verdict .sub { font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 600; opacity: .85; }
+.verdict .headline { color: var(--ink); max-width: 62ch; }
+.risk { text-align: right; min-width: 120px; }
+.risk .lbl { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--ink-2); }
+.risk .val { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.meter { height: 6px; border-radius: 3px; background: rgba(0,0,0,.12); overflow: hidden; margin-top: 4px; }
+.meter i { display: block; height: 100%; border-radius: 3px; background: var(--ink); }
+@media (max-width: 640px) { .verdict { grid-template-columns: 1fr; } .risk { text-align: left; } }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 18px; padding: 12px 20px; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink-2); }
+.facts b { color: var(--ink); font-weight: 500; }
+.sect { padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.sect:last-child { border-bottom: 0; }
+.sect h3 { font-size: 13px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+.sect h3 .n { font-weight: 400; color: var(--ink-3); }
+.finding { display: grid; grid-template-columns: 4px 1fr; gap: 12px; margin-bottom: 10px; }
+.finding .bar { border-radius: 2px; background: var(--line); }
+.finding.blocker .bar { background: var(--bad); } .finding.major .bar { background: var(--warn); } .finding.minor .bar { background: var(--accent); }
+.finding .top { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 2px; }
+.finding .ttl { font-weight: 500; }
+.finding .m { color: var(--ink-2); overflow-wrap: anywhere; }
+.finding ul { margin: 6px 0 0; padding-left: 18px; color: var(--ink-3); font-size: 12.5px; }
+.say { margin-top: 6px; padding: 7px 10px; border-radius: 6px; background: var(--surface-2); border: 1px solid var(--line-2); font-size: 12.5px; color: var(--ink-2); }
+.say b { color: var(--ink); font-weight: 500; }
+details.passed summary { cursor: pointer; color: var(--ink-2); padding: 4px 0; }
+details.passed .plist { display: grid; gap: 2px; margin-top: 6px; }
+.mail { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-bottom: 12px; }
+.mail-h { display: grid; gap: 2px; padding: 10px 14px; background: var(--surface-2); border-bottom: 1px solid var(--line); font-size: 13px; }
+.mail-h .k { color: var(--ink-3); display: inline-block; width: 58px; }
+.mail pre { margin: 0; padding: 14px; font: 13px/1.6 var(--sans); white-space: pre-wrap; overflow-wrap: anywhere; }
+.mail-f { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--line); background: var(--surface-2); font-size: 12.5px; color: var(--ink-3); }
+.audit { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.audit td { padding: 4px 8px 4px 0; vertical-align: top; border-bottom: 1px solid var(--line-2); }
+.audit td:first-child { color: var(--ink-3); white-space: nowrap; font-family: var(--mono); }
+.audit td:nth-child(2) { color: var(--ink-2); white-space: nowrap; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.diff { padding: 12px 20px; background: var(--accent-soft); border-bottom: 1px solid var(--line); font-size: 13px; }
+.idle-note { padding: 4px 18px 16px; color: var(--ink-3); font-size: 13px; }
+
+/* ---------- dashboard ---------- */
+.page-h { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.page-h h1 { font-size: 22px; }
+.page-h p { color: var(--ink-3); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.kpi { padding: 14px 16px; }
+.kpi .l { color: var(--ink-3); font-size: 12.5px; }
+.kpi .v { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.2; }
+.kpi .s { font-size: 12.5px; color: var(--ink-3); }
+.kpi.ok .v { color: var(--ok); } .kpi.warn .v { color: var(--warn); } .kpi.bad .v { color: var(--bad); }
+.dash-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; }
+@media (max-width: 900px) { .dash-grid { grid-template-columns: 1fr; } }
+.stack { display: flex; height: 14px; border-radius: 7px; overflow: hidden; background: var(--line-2); margin: 6px 0 12px; }
+.stack i { display: block; height: 100%; }
+.legend { display: grid; gap: 6px; }
+.legend div { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.legend .sw { width: 10px; height: 10px; border-radius: 3px; }
+.legend .v { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.reasons { display: grid; gap: 9px; }
+.reason { display: grid; grid-template-columns: 34px 1fr 28px; gap: 10px; align-items: center; font-size: 13px; }
+.reason .bar { height: 8px; background: var(--line-2); border-radius: 4px; overflow: hidden; margin-top: 3px; }
+.reason .bar i { display: block; height: 100%; background: var(--warn); border-radius: 4px; }
+.reason .t { color: var(--ink-2); }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 18px 12px; }
+.filters button { padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line); background: none; font-size: 12.5px; color: var(--ink-2); }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.twrap { overflow-x: auto; }
+table.cases { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+table.cases th { text-align: left; padding: 8px 12px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 600; border-bottom: 1px solid var(--line); background: var(--surface-2); }
+table.cases td { padding: 10px 12px; border-bottom: 1px solid var(--line-2); vertical-align: middle; }
+table.cases tbody tr { cursor: pointer; }
+table.cases tbody tr:hover { background: var(--surface-2); }
+table.cases tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.cell-main { max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.tag { font-size: 11px; color: var(--ink-3); border: 1px solid var(--line); padding: 0 5px; border-radius: 4px; margin-left: 6px; }
+.empty { padding: 28px; text-align: center; color: var(--ink-3); }
+.mini { width: 100%; border-collapse: collapse; font-size: 13px; }
+.mini th, .mini td { text-align: left; padding: 6px 10px 6px 0; border-bottom: 1px solid var(--line-2); vertical-align: top; }
+.mini th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--ink-3); font-weight: 600; }
+
+/* drawer */
+.scrim { position: fixed; inset: 0; background: rgba(8,12,20,.45); z-index: 40; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(780px, 100%); z-index: 41; background: var(--bg); box-shadow: -10px 0 40px rgba(0,0,0,.25); overflow-y: auto; }
+.drawer-h { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--line); }
+.drawer-b { padding: 16px 20px 40px; }
+.drawer .card.result { box-shadow: none; }
+
+/* ---------- process map ---------- */
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; counter-reset: s; margin-bottom: 16px; }
+.flow .st { position: relative; padding: 12px 12px 12px 12px; border: 1px solid var(--line); background: var(--surface); border-radius: 10px; }
+.flow .st b { display: block; font-weight: 500; margin: 2px 0 2px; }
+.flow .st span { font-size: 12.5px; color: var(--ink-3); }
+.flow .st .no { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.map-grid { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 16px; margin-bottom: 16px; align-items: start; }
+@media (max-width: 1000px) { .map-grid { grid-template-columns: 1fr; } }
+.onfail { font-size: 12px; font-weight: 500; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.onfail.reject { background: var(--bad-bg); color: var(--bad); }
+.onfail.pending-vendor, .onfail.pending-internal { background: var(--warn-bg); color: var(--warn); }
+.onfail.note { background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+.prose { max-width: 70ch; color: var(--ink-2); display: grid; gap: 8px; }
+.prose ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.decision-rows { display: grid; gap: 8px; }
+.decision-rows div { display: grid; grid-template-columns: 96px 1fr; gap: 12px; align-items: start; }
+
+/* ---------- simplified layout (overrides) ---------- */
+.btn.wide { width: 100%; padding: 11px 14px; margin-top: 4px; }
+.card-h h2 { font-size: 16px; }
+.scn { align-items: flex-start; }
+.scn .kind { width: 40px; padding-top: 2px; }
+.scn .kind.happy { color: var(--ok); } .scn .kind.edge { color: var(--warn); } .scn .kind.bonus { color: var(--bad); }
+.scn[aria-checked="true"] .kind { color: var(--accent); }
+.scn .lab { display: flex; flex-direction: column; gap: 1px; }
+.scn .sub { font-weight: 400; font-size: 12.5px; color: var(--ink-2); }
+.row-between { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.fold { border-top: 1px solid var(--line); }
+.fold > summary { cursor: pointer; padding: 13px 20px; font-weight: 500; list-style: none; display: flex; align-items: center; gap: 8px; }
+.fold > summary::-webkit-details-marker { display: none; }
+.fold > summary::before { content: ''; width: 6px; height: 6px; border-right: 2px solid var(--ink-3); border-bottom: 2px solid var(--ink-3); transform: rotate(-45deg); transition: transform .15s; }
+.fold[open] > summary::before { transform: rotate(45deg); }
+.fold-body { padding: 0 20px 18px; }
+.fold.plain { border: 0; margin-top: 12px; }
+.fold.plain > summary { padding: 6px 0; color: var(--ink-2); font-weight: 400; }
+.fold.plain .fold-body { padding: 8px 0 0; }
+.fold-body .editor { min-height: 240px; }
+.folds { border-top: 0; }
+.stage-name { flex: 1; font-weight: 500; }
+.stage[data-state="idle"] .stage-name { color: var(--ink-3); }
+.stage-head { padding: 10px 10px; }
+.stage-checks { margin-left: 46px; }
+.ck { grid-template-columns: 16px 1fr; }
+.ck-t { color: var(--ink); }
+.ck.pass .ck-t, .ck.skip .ck-t, .ck.info .ck-t { color: var(--ink-2); }
+.ck-d { color: var(--ink-3); font-size: 12.5px; }
+.verdict { grid-template-columns: 1fr auto; align-items: start; }
+.verdict .meta { display: grid; gap: 2px; text-align: right; font-size: 12.5px; color: var(--ink-2); }
+.verdict .headline { margin-top: 4px; }
+@media (max-width: 640px) { .verdict { grid-template-columns: 1fr; } .verdict .meta { text-align: left; } }
+.issues { display: grid; gap: 12px; }
+.issue { display: grid; grid-template-columns: 112px 1fr; gap: 12px; align-items: start; }
+.tagline { justify-self: start; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 500; white-space: nowrap; background: var(--surface-2); color: var(--ink-2); border: 1px solid var(--line); }
+.issue.block .tagline { background: var(--bad-bg); color: var(--bad); border-color: transparent; }
+.issue.review .tagline, .issue.fix .tagline { background: var(--warn-bg); color: var(--warn); border-color: transparent; }
+.issue-t { font-weight: 500; }
+.issue-d { color: var(--ink-2); font-size: 13px; overflow-wrap: anywhere; }
+@media (max-width: 520px) { .issue { grid-template-columns: 1fr; gap: 4px; } }
+.card > .filters { padding: 14px 18px 12px; }
+.kpi { padding: 16px 18px; }
+.kpi .v { font-size: 30px; }
+.cell-main { max-width: 300px; }
+.flow .st { display: flex; gap: 10px; align-items: center; }
+.flow .st b { margin: 0; }
+.decision-rows div { grid-template-columns: 96px 1fr; align-items: center; }
+
+/* ---------- stand-out alerts ---------- */
+.alerts { display: grid; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.alert { border: 1px solid; border-left-width: 6px; border-radius: 10px; padding: 12px 14px 8px; }
+.alert-h { font-size: 12px; text-transform: uppercase; letter-spacing: .09em; font-weight: 700; margin: 0 0 6px; }
+.alert.fix { border-color: var(--warn); background: var(--warn-bg); } .alert.fix .alert-h { color: var(--warn); }
+.alert.review { border-color: var(--bad); background: var(--bad-bg); } .alert.review .alert-h { color: var(--bad); }
+.alert.block { border-color: var(--bad); background: var(--bad-bg); } .alert.block .alert-h { color: var(--bad); }
+.alert.note { border-color: var(--accent); background: var(--accent-soft); } .alert.note .alert-h { color: var(--accent); }
+.flags { display: grid; }
+.flag { display: flex; gap: 10px; align-items: baseline; padding: 7px 0; }
+.alert .flag + .flag { border-top: 1px solid color-mix(in srgb, currentColor 0%, var(--line)); }
+.kindpill { flex: none; min-width: 84px; text-align: center; font: 700 11.5px/1 var(--mono); letter-spacing: .05em; padding: 5px 8px; border-radius: 5px; color: var(--surface); background: var(--ink-2); }
+.flag.fix .kindpill { background: var(--warn); } .flag.review .kindpill, .flag.block .kindpill { background: var(--bad); } .flag.note .kindpill { background: var(--accent); color: var(--accent-ink); }
+.flag-text { font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+.flag.note .flag-text { font-weight: 500; }
+.ck.fail, .ck.warn { padding: 8px 10px; border-radius: 8px; margin: 3px 0; }
+.ck.fail { background: var(--bad-bg); } .ck.warn { background: var(--accent-soft); }
+.ck.fail .ck-t, .ck.warn .ck-t { font-weight: 600; }
+.ck .flags { margin-top: 4px; }
+.ck .flag { padding: 3px 0; font-size: 12.5px; }
+.ck .kindpill { min-width: 74px; font-size: 10.5px; padding: 4px 6px; }
+.plist .ck.fail .ck-d, .plist .ck.warn .ck-d { color: var(--ink-2); }
+
+/* ---------- form ---------- */
+.modeseg { display: flex; margin-bottom: 14px; }
+.modeseg button { flex: 1; padding: 7px 12px; }
+.form-tools { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 4px; }
+.fh { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); margin: 16px 0 8px; font-weight: 600; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fld { display: grid; gap: 3px; min-width: 0; }
+.fld.wide { grid-column: 1 / -1; }
+.fld > span { font-size: 12px; color: var(--ink-3); }
+.fld input, .fld select, .form-tools select { width: 100%; padding: 7px 9px; border-radius: 7px; border: 1px solid var(--line); background: var(--surface-2); color: var(--ink); font: inherit; font-size: 13.5px; }
+.form-tools select { width: auto; }
+.fld input:focus, .fld select:focus { outline: 2px solid var(--accent); outline-offset: 0; background: var(--surface); }
+.docrow { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+.docrow-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.form-err { color: var(--bad); margin-bottom: 8px; }
+@media (max-width: 520px) { .form-grid { grid-template-columns: 1fr; } }
+#run-btn { position: sticky; bottom: 12px; z-index: 3; box-shadow: 0 6px 18px rgba(16,26,43,.22); }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><div class="brand-mark" aria-hidden="true"><svg class="ic" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.5l3 3 7-7"/></svg></div><span>Vendor Onboarding Desk</span></div>
+  <nav class="nav" aria-label="Views">
+    <button type="button" data-view="process">Process</button>
+    <button type="button" data-view="dashboard">Dashboard<span class="count num" id="nav-count">0</span></button>
+    <button type="button" data-view="process-map">How it works</button>
+  </nav>
+  <div class="spacer"></div>
+  <button type="button" class="linkbtn" id="reset-btn">Reset demo</button>
+</header>
+<main>
+  <section class="view" id="view-process" aria-label="Process"></section>
+  <section class="view" id="view-dashboard" aria-label="Dashboard" hidden></section>
+  <section class="view" id="view-process-map" aria-label="Process map" hidden></section>
+</main>
+<div id="drawer-root"></div>
+<script>
+/* ---------------------------------------------------------------
+   Vendor onboarding rule engine  (pure JS, no dependencies)
+   Deterministic by design: every decision is a rule with evidence,
+   so the result can be audited and explained line by line.
+---------------------------------------------------------------- */
+const Engine = (() => {
+  const RULESET_VERSION = '2026.11-r1';
+  const BUYER = 'Halden Group';
+  const DAY = 86400000;
+
+  /* ============================ utils ============================ */
+  const s = (v) => (v === undefined || v === null ? '' : String(v)).trim();
+  const get = (o, path) => path.split('.').reduce((a, k) => (a == null ? undefined : a[k]), o);
+  const parseDate = (v) => { const d = new Date(v); return isNaN(d) ? null : d; };
+  const daysBetween = (a, b) => Math.floor((a - b) / DAY);
+  const fmtDate = (d) => d.toISOString().slice(0, 10);
+  const maskAcct = (a) => { const t = s(a).replace(/\s+/g, ''); return t.length > 4 ? '••••' + t.slice(-4) : t; };
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+  const COUNTRY_NAMES = { IN: 'India', US: 'United States', GB: 'United Kingdom', DE: 'Germany', KP: 'North Korea', IR: 'Iran', SY: 'Syria', CU: 'Cuba', AE: 'United Arab Emirates', SG: 'Singapore' };
+  const cname = (c) => COUNTRY_NAMES[c] || c || 'unknown country';
+
+  /* ====================== name normalisation ===================== */
+  const SUFFIX_MAP = { pvt: 'private', ltd: 'limited', co: 'company', corp: 'corporation', inc: 'incorporated' };
+  const LEGAL = new Set(['private', 'limited', 'company', 'corporation', 'incorporated', 'llc', 'gmbh', 'ag', 'plc', 'llp', 'lp', 'kg', 'ug', 'sa', 'srl', 'bv', 'nv', 'fze', 'fzco', 'the']);
+
+  function fold(str) {
+    return s(str).toLowerCase()
+      .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
+      .normalize('NFD').replace(/[̀-ͯ]/g, '')
+      .replace(/\./g, '').replace(/&/g, ' and ')
+      .replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  const tokens = (str) => fold(str).split(' ').filter(Boolean).map((t) => SUFFIX_MAP[t] || t);
+  const coreTokens = (str) => tokens(str).filter((t) => !LEGAL.has(t) && t !== 'and');
+  const legalForm = (str) => tokens(str).filter((t) => LEGAL.has(t) && t !== 'the').sort().join(' ');
+
+  function lev(a, b) {
+    const m = a.length, n = b.length;
+    if (!m) return n; if (!n) return m;
+    let prev = Array.from({ length: n + 1 }, (_, j) => j);
+    for (let i = 1; i <= m; i++) {
+      const cur = [i];
+      for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = cur;
+    }
+    return prev[n];
+  }
+  const ratio = (a, b) => { const m = Math.max(a.length, b.length); return m ? 1 - lev(a, b) / m : 1; };
+
+  function nameSimilarity(a, b) {
+    const ca = coreTokens(a), cb = coreTokens(b);
+    if (!ca.length || !cb.length) return 0;
+    const r1 = ratio(ca.join(' '), cb.join(' '));
+    const r2 = ratio([...ca].sort().join(' '), [...cb].sort().join(' '));
+    const A = new Set(ca), B = new Set(cb);
+    const inter = [...A].filter((x) => B.has(x)).length;
+    const jac = inter / new Set([...A, ...B]).size;
+    const contained = inter === Math.min(A.size, B.size) && A.size !== B.size ? 0.8 : 0;
+    return Math.max(r1, r2, jac, contained);
+  }
+  const NAME_MATCH = 0.9, NAME_PARTIAL = 0.7;
+  const tier = (x) => (x >= NAME_MATCH ? 'match' : x >= NAME_PARTIAL ? 'partial' : 'mismatch');
+  const pct = (x) => Math.round(x * 100) + '%';
+
+  /* ========================= validators ========================== */
+  const GST_CHARS = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+  function gstinCheckChar(first14) {
+    let sum = 0;
+    for (let i = 0; i < 14; i++) { const p = GST_CHARS.indexOf(first14[i]) * (i % 2 === 0 ? 1 : 2); sum += Math.floor(p / 36) + (p % 36); }
+    return GST_CHARS[(36 - (sum % 36)) % 36];
+  }
+  const PAN_RE = /^[A-Z]{3}[PCHFATBLJG][A-Z]\d{4}[A-Z]$/;
+  const GSTIN_RE = /^(\d{2})([A-Z]{3}[PCHFATBLJG][A-Z]\d{4}[A-Z])([1-9A-Z])Z([0-9A-Z])$/;
+
+  function ukVatCheck(d7) { let t = 0; for (let i = 0; i < 7; i++) t += +d7[i] * (8 - i); return String((97 - (t % 97)) % 97).padStart(2, '0'); }
+  function deVatCheck(d8) {
+    let product = 10;
+    for (let i = 0; i < 8; i++) { let sum = (+d8[i] + product) % 10; if (sum === 0) sum = 10; product = (2 * sum) % 11; }
+    const c = 11 - product; return String(c === 10 ? 0 : c);
+  }
+  function abaCheckDigit(d8) { const w = [3, 7, 1, 3, 7, 1, 3, 7]; let t = 0; for (let i = 0; i < 8; i++) t += +d8[i] * w[i]; return String((10 - (t % 10)) % 10); }
+  const abaValid = (r) => /^\d{9}$/.test(r) && abaCheckDigit(r.slice(0, 8)) === r[8];
+
+  const toNum = (str) => str.replace(/[A-Z]/g, (c) => c.charCodeAt(0) - 55);
+  function mod97(numStr) { let r = 0; for (const ch of numStr) r = (r * 10 + +ch) % 97; return r; }
+  function ibanCheckDigits(cc, bban) { return String(98 - mod97(toNum(bban + cc + '00'))).padStart(2, '0'); }
+  const IBAN_LEN = { DE: 22, GB: 22 };
+  function validateIban(raw) {
+    const v = s(raw).replace(/\s+/g, '').toUpperCase();
+    if (!/^[A-Z]{2}\d{2}[A-Z0-9]{10,30}$/.test(v)) return { ok: false, reason: 'IBAN is malformed (expected 2 letters, 2 check digits, then the account part)', value: v };
+    const cc = v.slice(0, 2);
+    if (IBAN_LEN[cc] && v.length !== IBAN_LEN[cc]) return { ok: false, reason: `an ${cc} IBAN must be ${IBAN_LEN[cc]} characters, this one has ${v.length}`, value: v, country: cc };
+    if (mod97(toNum(v.slice(4) + v.slice(0, 4))) !== 1) return { ok: false, reason: 'IBAN check digits do not validate (likely a typo)', value: v, country: cc };
+    return { ok: true, value: v, country: cc };
+  }
+
+  const EIN_PREFIXES = new Set([1,2,3,4,5,6,10,11,12,13,14,15,16,20,21,22,23,24,25,26,27,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,50,51,52,53,54,55,56,57,58,59,60,61,62,63,64,65,66,67,68,71,72,73,74,75,76,77,80,81,82,83,84,85,86,87,88,90,91,92,93,94,95,98,99]);
+
+  const TAX = {
+    IN: { label: 'GSTIN', example: '27AABCM1234C1Z5', validate(v) {
+      const x = s(v).toUpperCase().replace(/\s+/g, '');
+      const m = GSTIN_RE.exec(x);
+      if (!m) return { ok: false, reason: `"${x}" is not a valid GSTIN shape (15 characters: 2-digit state code, 10-character PAN, entity number, "Z", check character)` };
+      const st = +m[1]; if (!((st >= 1 && st <= 38) || st === 97 || st === 99)) return { ok: false, reason: `state code ${m[1]} is not a valid Indian state or UT code` };
+      if (gstinCheckChar(x.slice(0, 14)) !== x[14]) return { ok: false, reason: 'GSTIN check character does not validate (likely a typo)' };
+      return { ok: true, value: x, pan: m[2] };
+    } },
+    US: { label: 'EIN', example: '47-1234567', validate(v) {
+      const x = s(v).replace(/\s+/g, '');
+      if (!/^\d{2}-?\d{7}$/.test(x)) return { ok: false, reason: `"${x}" is not an EIN (format NN-NNNNNNN)` };
+      if (!EIN_PREFIXES.has(+x.slice(0, 2))) return { ok: false, reason: `EIN prefix ${x.slice(0, 2)} is not issued by the IRS` };
+      return { ok: true, value: x.replace('-', '') };
+    } },
+    GB: { label: 'UK VAT number', example: 'GB123456789', validate(v) {
+      const x = s(v).toUpperCase().replace(/\s+/g, '');
+      if (!/^GB\d{9}$/.test(x)) return { ok: false, reason: `"${x}" is not a UK VAT number (GB followed by 9 digits)` };
+      const d = x.slice(2), t = [...d.slice(0, 7)].reduce((a, c, i) => a + +c * (8 - i), 0), chk = +d.slice(7);
+      if ((t + chk) % 97 !== 0 && (t + chk + 55) % 97 !== 0) return { ok: false, reason: 'UK VAT check digits do not validate (likely a typo)' };
+      return { ok: true, value: x };
+    } },
+    DE: { label: 'USt-IdNr (VAT ID)', example: 'DE123456788', validate(v) {
+      const x = s(v).toUpperCase().replace(/\s+/g, '');
+      if (!/^DE\d{9}$/.test(x)) return { ok: false, reason: `"${x}" is not a German USt-IdNr (DE followed by 9 digits)` };
+      if (deVatCheck(x.slice(2, 10)) !== x[10]) return { ok: false, reason: 'USt-IdNr check digit does not validate (likely a typo)' };
+      return { ok: true, value: x };
+    } },
+  };
+  // Which country a tax ID *looks like* it belongs to (used for "wrong country" diagnosis)
+  function detectTaxCountry(v) {
+    const x = s(v).toUpperCase().replace(/\s+/g, '');
+    if (/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/.test(x)) return 'IN';
+    if (/^\d{2}-?\d{7}$/.test(x)) return 'US';
+    if (/^GB\d{9}$/.test(x)) return 'GB';
+    if (/^DE\d{9}$/.test(x)) return 'DE';
+    return null;
+  }
+
+  /* ===================== country rule sets ======================= */
+  const BASE_FIELDS = [
+    ['company.legalName', 'Legal company name'], ['company.country', 'Country of registration'],
+    ['company.address.line', 'Registered address'], ['company.address.city', 'City'], ['company.address.postal', 'Postal code'],
+    ['company.contactName', 'Contact name'], ['company.contactEmail', 'Contact email'], ['company.contactPhone', 'Contact phone'],
+    ['tax.idValue', 'Tax ID'], ['bank.accountHolderName', 'Bank account holder name'], ['bank.bankName', 'Bank name'],
+  ];
+  const COUNTRY_FIELDS = {
+    IN: [['tax.pan', 'PAN'], ['bank.accountNumber', 'Bank account number'], ['bank.ifsc', 'IFSC code']],
+    US: [['bank.routingNumber', 'ABA routing number'], ['bank.accountNumber', 'Bank account number']],
+    GB: [['bank.iban', 'IBAN']],
+    DE: [['bank.iban', 'IBAN']],
+  };
+  const DOC_LABELS = {
+    certificate_of_incorporation: 'Certificate of incorporation', gst_certificate: 'GST registration certificate', pan_card: 'PAN card',
+    cancelled_cheque: 'Cancelled cheque', w9: 'IRS Form W-9', w8ben: 'IRS Form W-8BEN', bank_letter: 'Bank confirmation letter',
+    vat_certificate: 'VAT registration confirmation', trade_register_extract: 'Trade register extract (Handelsregisterauszug)',
+  };
+  const REQUIRED_DOCS = {
+    IN: ['certificate_of_incorporation', 'gst_certificate', 'pan_card', 'cancelled_cheque'],
+    US: ['w9', 'bank_letter'],
+    GB: ['certificate_of_incorporation', 'vat_certificate', 'bank_letter'],
+    DE: ['trade_register_extract', 'vat_certificate', 'bank_letter'],
+  };
+  const DOC_ORIGIN = { gst_certificate: 'India', pan_card: 'India', cancelled_cheque: 'India', w9: 'the United States', w8ben: 'non-US vendors', trade_register_extract: 'Germany', vat_certificate: 'the UK or EU', certificate_of_incorporation: 'any country', bank_letter: 'any country' };
+  const BANK_DOCS = new Set(['bank_letter', 'cancelled_cheque']);
+  const TAX_DOCS = new Set(['gst_certificate', 'vat_certificate', 'w9', 'pan_card']);
+  const ID_DOCS = new Set(['certificate_of_incorporation', 'trade_register_extract', 'gst_certificate', 'vat_certificate', 'w9', 'pan_card']);
+  const BANK_LETTER_MAX_AGE_DAYS = 90;
+  const FREE_MAIL = new Set(['gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'proton.me', 'protonmail.com', 'icloud.com', 'aol.com', 'rediffmail.com']);
+  const PHONE_PREFIX = { IN: '+91', US: '+1', GB: '+44', DE: '+49' };
+  const SANCTIONED_COUNTRIES = ['KP', 'IR', 'SY', 'CU'];
+
+  /* ============================ rules ============================ */
+  // Catalogue used by the "Process map" page. onFail: reject | pending-vendor | pending-internal | note
+  const RULES = [
+    { id: 'I1', stage: 'intake', title: 'Submission is well-formed', onFail: 'pending-vendor', what: 'Company, tax and bank blocks are present and are objects.' },
+    { id: 'I2', stage: 'intake', title: 'Country ruleset available', onFail: 'pending-internal', what: 'IN, US, GB and DE have full rulesets. Any other country is routed to a human for tax-ID verification.' },
+    { id: 'I3', stage: 'intake', title: 'Names normalised', onFail: 'note', what: 'Case, accents, punctuation and legal suffixes (Pvt Ltd / Private Limited, LLC, GmbH) are normalised before any name comparison.' },
+    { id: 'C1', stage: 'completeness', title: 'Required fields present', onFail: 'pending-vendor', what: 'Country-specific list of required fields. Lists every missing field at once so the vendor is only asked once.' },
+    { id: 'C2', stage: 'completeness', title: 'Required documents attached', onFail: 'pending-vendor', what: 'Country-specific document set. If a wrong-country document was attached in its place, the request says so.' },
+    { id: 'F1', stage: 'format', title: 'Tax ID valid for the country', onFail: 'pending-vendor', what: 'Format and checksum (GSTIN, EIN, UK VAT, USt-IdNr). Detects IDs that belong to a different country.' },
+    { id: 'F2', stage: 'format', title: 'Bank details valid', onFail: 'pending-vendor', what: 'IBAN mod-97, IFSC shape, ABA routing checksum, account number length.' },
+    { id: 'F3', stage: 'format', title: 'Contact details plausible', onFail: 'pending-vendor', what: 'Email format. Free-mail domains and phone prefix mismatches are noted, not blocked.' },
+    { id: 'X1', stage: 'crossref', title: 'Legal name matches bank account holder', onFail: 'pending-internal', what: 'Fuzzy match on normalised names, also tried against the trade name. Match 90%+, partial 70-90%, mismatch below 70%. A mismatch is a payment-diversion signal and is escalated.' },
+    { id: 'X2', stage: 'crossref', title: 'Country consistent across the submission', onFail: 'pending-vendor', what: 'Registered country vs address country vs bank country vs country the tax ID belongs to.' },
+    { id: 'X3', stage: 'crossref', title: 'PAN embedded in GSTIN matches PAN provided', onFail: 'pending-vendor', what: 'India only. The 10-character PAN inside a GSTIN must equal the PAN field. Also checks the PAN entity type is a company.' },
+    { id: 'X4', stage: 'crossref', title: 'Documents issued to this vendor', onFail: 'pending-vendor', what: 'Name on each identity/tax document must match the legal name.' },
+    { id: 'X5', stage: 'crossref', title: 'Tax ID on documents matches submission', onFail: 'pending-vendor', what: 'Tax ID printed on the certificate must equal the one on the form.' },
+    { id: 'X6', stage: 'crossref', title: 'Bank document matches bank details', onFail: 'pending-vendor', what: 'Account holder and account number on the bank letter or cancelled cheque must equal the form.' },
+    { id: 'X7', stage: 'crossref', title: 'Documents are current', onFail: 'pending-vendor', what: 'Not expired. Bank letters must be issued in the last 90 days.' },
+    { id: 'R1', stage: 'risk', title: 'Sanctions and jurisdiction screening', onFail: 'reject', what: 'Company, trade and bank-holder names against the watchlist; company and bank countries against restricted jurisdictions.' },
+    { id: 'R2', stage: 'risk', title: 'Not already in the vendor master', onFail: 'reject', what: 'Same tax ID and same name is a duplicate. Same tax ID with a new bank account is routed to R4.' },
+    { id: 'R3', stage: 'risk', title: 'Bank account not owned by another vendor', onFail: 'reject', what: 'The same account already belongs to a different vendor in the master. Classic payment-diversion pattern.' },
+    { id: 'R4', stage: 'risk', title: 'Bank change request on existing vendor', onFail: 'pending-internal', what: 'Known vendor, new bank details. Held until verified by a call to the phone number already on file, never the one in the submission.' },
+  ];
+
+  /* ========================= rule helpers ======================== */
+  // Plain wording for the same rule when it fails or only adds a note.
+  const FAIL_TITLE = { I1: 'Submission is incomplete', I2: 'Country not supported', C1: 'Required fields missing', C2: 'Required documents missing', F1: 'Tax ID is invalid', F2: 'Bank details are invalid', F3: 'Contact email is invalid', X1: 'Bank account holder does not match', X2: 'Countries do not agree', X3: 'PAN does not match the GSTIN', X4: 'Document is in a different name', X5: 'Tax ID differs from the document', X6: 'Bank document does not match', X7: 'Documents expired or too old', R1: 'Watchlist or restricted country', R2: 'Vendor already exists', R3: 'Account belongs to another vendor', R4: 'Bank change on an existing vendor' };
+  const NOTE_TITLE = { C2: 'Extra document attached', F3: 'Contact detail noted', X1: 'Bank holder name differs slightly', X3: 'PAN detail noted' };
+  const R = (id, status, severity, message, extra = {}) => {
+    const meta = RULES.find((r) => r.id === id) || {};
+    const title = status === 'fail' ? FAIL_TITLE[id] || meta.title : status === 'warn' ? NOTE_TITLE[id] || meta.title : meta.title;
+    return { id, stage: meta.stage, title, status, severity, message, ...extra };
+  };
+  const pass = (id, message, extra) => R(id, 'pass', null, message, extra);
+  const note = (id, message, extra) => R(id, 'warn', 'minor', message, extra);
+  const skip = (id, message) => R(id, 'skip', null, message);
+  const failV = (id, message, ask, extra) => R(id, 'fail', 'major', message, { owner: 'vendor', ask, ...extra });
+  const failI = (id, message, ask, extra) => R(id, 'fail', 'major', message, { owner: 'internal', escalate: true, ask, ...extra });
+  const blocker = (id, message, extra) => R(id, 'fail', 'blocker', message, { owner: 'internal', escalate: true, ...extra });
+
+  /* ============================= stages ========================== */
+  const STAGES = [
+    { id: 'intake', name: 'Intake and normalisation', blurb: 'Read the submission, pick the country ruleset, normalise names' },
+    { id: 'completeness', name: 'Completeness', blurb: 'Required fields and documents for this country' },
+    { id: 'format', name: 'Format validation', blurb: 'Tax ID, bank and contact details are well-formed' },
+    { id: 'crossref', name: 'Cross-reference', blurb: 'Fields and documents agree with each other' },
+    { id: 'risk', name: 'Risk and registry checks', blurb: 'Sanctions, duplicates, bank reuse, bank changes' },
+    { id: 'decision', name: 'Decision', blurb: 'Combine findings into approved, pending or rejected' },
+    { id: 'communicate', name: 'Communicate', blurb: 'Draft the vendor message and the internal note' },
+  ];
+
+  /* -------- stage 1: intake -------- */
+  function stageIntake(st) {
+    const sub = st.sub, out = [];
+    const bad = ['company', 'tax', 'bank'].filter((k) => !sub[k] || typeof sub[k] !== 'object');
+    if (bad.length) {
+      out.push(failV('I1', `Missing section${bad.length > 1 ? 's' : ''}: ${bad.join(', ')}`, `Resubmit the form with the ${bad.join(', ')} section${bad.length > 1 ? 's' : ''} completed.`));
+      sub.company = sub.company || {}; sub.tax = sub.tax || {}; sub.bank = sub.bank || {}; sub.documents = sub.documents || [];
+    } else out.push(pass('I1', 'Company, tax and bank sections present'));
+    sub.documents = Array.isArray(sub.documents) ? sub.documents : [];
+
+    st.country = s(get(sub, 'company.country')).toUpperCase();
+    st.rules_country = REQUIRED_DOCS[st.country] ? st.country : null;
+    if (st.rules_country) out.push(pass('I2', `Applying the ${cname(st.country)} ruleset (${TAX[st.country].label}, ${REQUIRED_DOCS[st.country].length} required documents)`));
+    else out.push(failI('I2', `No automated ruleset for "${st.country || 'no country'}". Generic checks only; tax ID needs manual verification`, null, { internalNote: 'Unsupported jurisdiction: verify tax ID against the local registry manually.' }));
+
+    const legal = s(get(sub, 'company.legalName')), trade = s(get(sub, 'company.tradeName')), holder = s(get(sub, 'bank.accountHolderName'));
+    st.names = { legal, trade, holder, core: coreTokens(legal).join(' '), legalForm: legalForm(legal) };
+    out.push(R('I3', 'info', null, legal ? `Legal name normalised to "${st.names.core}"${st.names.legalForm ? ` (legal form: ${st.names.legalForm})` : ''}${holder ? `; bank holder to "${coreTokens(holder).join(' ')}"` : ''}` : 'No legal name to normalise'));
+    return out;
+  }
+
+  /* -------- stage 2: completeness -------- */
+  function stageCompleteness(st) {
+    const sub = st.sub, out = [];
+    const fields = [...BASE_FIELDS, ...(COUNTRY_FIELDS[st.country] || [['bank.iban', 'IBAN or bank account number']])];
+    let missing = fields.filter(([p]) => !s(get(sub, p)));
+    if (!COUNTRY_FIELDS[st.country]) missing = missing.filter(([p]) => !(p === 'bank.iban' && (s(get(sub, 'bank.accountNumber')))));
+    st.missingFields = missing.map(([p]) => p);
+    if (missing.length) {
+      const labels = missing.map(([, l]) => l);
+      out.push(failV('C1', `${plural(missing.length, 'required field')} missing: ${labels.join(', ')}`, `Please provide: ${labels.join(', ')}.`, { evidence: labels }));
+    } else out.push(pass('C1', `All ${fields.length} required fields present`));
+
+    const req = REQUIRED_DOCS[st.country];
+    if (!req) { out.push(skip('C2', 'No document list for this country; manual review')); return out; }
+    const have = new Set(sub.documents.map((d) => s(d.type)));
+    const lacking = req.filter((t) => !have.has(t));
+    if (lacking.length) {
+      const extras = sub.documents.filter((d) => !req.includes(s(d.type)));
+      const SUBSTITUTES = { vat_certificate: ['gst_certificate'], w9: ['w8ben'], bank_letter: ['cancelled_cheque'], trade_register_extract: ['certificate_of_incorporation'], gst_certificate: ['vat_certificate'], certificate_of_incorporation: ['trade_register_extract'] };
+      const asks = lacking.map((t) => {
+        const wrong = extras.find((d) => (SUBSTITUTES[t] || []).includes(s(d.type)));
+        const o = wrong && DOC_ORIGIN[s(wrong.type)];
+        return `${DOC_LABELS[t] || t}${wrong ? ` (the ${DOC_LABELS[s(wrong.type)]} you attached ${o && o !== 'any country' ? `is a document for ${o} and ` : ''}is not accepted in its place)` : ''}`;
+      });
+      out.push(failV('C2', `${plural(lacking.length, 'required document')} missing: ${lacking.map((t) => DOC_LABELS[t] || t).join(', ')}`, `Please attach: ${asks.join('; ')}.`, { evidence: lacking }));
+    } else out.push(pass('C2', `All ${req.length} required documents attached`));
+    const stray = sub.documents.filter((d) => !req.includes(s(d.type)));
+    if (stray.length && !lacking.length) out.push(note('C2', `Unrequired document attached: ${stray.map((d) => DOC_LABELS[s(d.type)] || d.type).join(', ')}. Ignored.`));
+    return out;
+  }
+
+  /* -------- stage 3: format -------- */
+  function resolveBank(st) {
+    const b = st.sub.bank || {}, out = { country: null, ok: null, reason: '', acct: '' };
+    const cc = st.country;
+    if (cc === 'IN') {
+      const acct = s(b.accountNumber).replace(/\s+/g, ''), ifsc = s(b.ifsc).toUpperCase();
+      out.acct = acct; out.country = ifsc || acct ? 'IN' : null;
+      if (!acct && !ifsc) { out.ok = null; return out; }
+      const problems = [];
+      if (!/^\d{9,18}$/.test(acct)) problems.push(`account number "${acct}" must be 9 to 18 digits`);
+      if (!/^[A-Z]{4}0[A-Z0-9]{6}$/.test(ifsc)) problems.push(`IFSC "${ifsc}" must be 4 letters, a zero, then 6 characters`);
+      out.ok = !problems.length; out.reason = problems.join('; ');
+    } else if (cc === 'US') {
+      const r = s(b.routingNumber).replace(/\s+/g, ''), acct = s(b.accountNumber).replace(/\s+/g, '');
+      out.acct = acct; out.country = 'US';
+      if (!r && !acct) { out.ok = null; return out; }
+      const problems = [];
+      if (!abaValid(r)) problems.push(`routing number "${r}" fails the ABA checksum`);
+      if (!/^\d{4,17}$/.test(acct)) problems.push(`account number "${acct}" must be 4 to 17 digits`);
+      out.ok = !problems.length; out.reason = problems.join('; ');
+    } else {
+      const raw = s(b.iban) || '';
+      if (raw) {
+        const v = validateIban(raw); out.acct = v.value; out.country = v.country || null; out.ok = v.ok; out.reason = v.ok ? '' : v.reason;
+        if (v.ok && st.rules_country && v.country !== cc && b.country === undefined) out.country = v.country;
+      } else if (s(b.accountNumber)) { out.acct = s(b.accountNumber).replace(/\s+/g, ''); out.ok = true; out.country = s(b.country).toUpperCase() || null; }
+      else out.ok = null;
+    }
+    if (!out.country && s(b.country)) out.country = s(b.country).toUpperCase();
+    return out;
+  }
+
+  function stageFormat(st) {
+    const sub = st.sub, out = [];
+    // F1 tax ID
+    const tv = s(get(sub, 'tax.idValue'));
+    if (!tv) out.push(skip('F1', 'No tax ID to validate (flagged in completeness)'));
+    else if (!st.rules_country) out.push(skip('F1', 'No validator for this country'));
+    else {
+      const v = TAX[st.country].validate(tv);
+      const looks = detectTaxCountry(tv);
+      st.tax = v;
+      if (v.ok) out.push(pass('F1', `${TAX[st.country].label} ${v.value} is valid for ${cname(st.country)}`, { evidence: v.pan ? [`Embedded PAN ${v.pan}`] : undefined }));
+      else if (looks && looks !== st.country) out.push(failV('F1', `Tax ID ${tv} has the shape of a ${cname(looks)} ${TAX[looks].label}, but the vendor is registered in ${cname(st.country)}`, `The tax ID you gave (${tv}) looks like a ${cname(looks)} ${TAX[looks].label}. For a company registered in ${cname(st.country)} please provide the ${TAX[st.country].label} (example format: ${TAX[st.country].example}).`, { flag: `Tax ID ${tv} looks like a ${cname(looks)} ID, not a ${cname(st.country)} one` }));
+      else {
+        const docId = sub.documents.map((d) => s(d.taxId)).find((t) => t && TAX_DOCS_ID_OK(st.country, t));
+        const hint = docId ? ` Your attached registration document shows ${docId}. Is that the correct number?` : ' Please check it against your registration certificate.';
+        st.f1DocHint = !!docId;
+        out.push(failV('F1', `${TAX[st.country].label} invalid: ${v.reason}${docId ? `. A valid ${TAX[st.country].label} (${docId}) appears on an attached document` : ''}`, `The ${TAX[st.country].label} you provided (${tv}) is not valid: ${v.reason}.${hint}`, { flag: `Tax ID ${tv} is not valid${docId ? ` (your document shows ${docId})` : ''}` }));
+      }
+    }
+    // F2 bank
+    const bank = resolveBank(st); st.bank = bank;
+    if (bank.ok === null) out.push(skip('F2', 'No bank account details to validate (flagged in completeness)'));
+    else if (bank.ok) out.push(pass('F2', `Bank details are well-formed (account ${maskAcct(bank.acct)}${bank.country ? ', bank in ' + cname(bank.country) : ''})`));
+    else out.push(failV('F2', `Bank details invalid: ${bank.reason}`, `Your bank details could not be validated: ${bank.reason}. Please re-enter them exactly as shown on your bank letter.`, { flag: `Bank details are not valid: ${bank.reason.split('; ')[0]}` }));
+    // F3 contact
+    const email = s(get(sub, 'company.contactEmail')).toLowerCase(), site = s(get(sub, 'company.website')).toLowerCase().replace(/^https?:\/\//, '').replace(/^www\./, '').split('/')[0];
+    const phone = s(get(sub, 'company.contactPhone')).replace(/[\s()-]/g, '');
+    if (!email) out.push(skip('F3', 'No contact email'));
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) out.push(failV('F3', `Contact email "${email}" is not a valid address`, 'Please provide a valid contact email address.', { flag: `Email "${email}" is not valid` }));
+    else {
+      const dom = email.split('@')[1], notes = [];
+      if (FREE_MAIL.has(dom)) notes.push(`contact uses a free email domain (${dom}); acceptable but noted`);
+      else if (site && !(dom === site || dom.endsWith('.' + site) || site.endsWith('.' + dom))) notes.push(`email domain ${dom} differs from website ${site}`);
+      const pre = PHONE_PREFIX[st.country];
+      if (pre && phone && !phone.startsWith(pre)) notes.push(`phone ${phone} does not start with ${pre} for ${cname(st.country)}`);
+      if (notes.length) out.push(note('F3', notes.join('; ')));
+      else out.push(pass('F3', `Contact email domain ${dom} is consistent with the website`));
+    }
+    return out;
+  }
+
+  /* -------- stage 4: cross-reference -------- */
+  function stageCrossRef(st) {
+    const sub = st.sub, out = [], { legal, trade, holder } = st.names;
+    // X1 legal vs bank holder
+    if (!holder || !legal) out.push(skip('X1', 'Need both legal name and bank holder name'));
+    else {
+      const sLegal = nameSimilarity(legal, holder), sTrade = trade ? nameSimilarity(trade, holder) : 0;
+      const best = Math.max(sLegal, sTrade), via = sTrade > sLegal ? 'trade name' : 'legal name';
+      st.holderMatch = { legal: sLegal, trade: sTrade, best, via };
+      const t = tier(best);
+      const ev = [`Legal name: "${legal}"`, trade ? `Trade name: "${trade}"` : null, `Bank account holder: "${holder}"`, `Similarity ${pct(best)} (via ${via})`].filter(Boolean);
+      if (t === 'match') {
+        const forms = legalForm(legal) && legalForm(holder) && legalForm(legal) !== legalForm(holder) && via === 'legal name';
+        if (via === 'trade name') out.push(note('X1', `Bank account holder matches the declared trade name "${trade}" (${pct(best)}), not the legal name. Accepted, noted for audit.`, { evidence: ev }));
+        else if (forms) out.push(note('X1', `Names match (${pct(best)}) but legal form differs: "${legalForm(legal)}" vs "${legalForm(holder)}"`, { evidence: ev }));
+        else out.push(pass('X1', `Bank account holder matches legal name (${pct(best)} after normalisation)`, { evidence: ev }));
+      } else if (t === 'partial') out.push(failV('X1', `Bank account holder only partly matches the legal name (${pct(best)})`, 'The account holder name on your bank details differs from your registered company name. Please send a bank confirmation letter on bank letterhead showing the exact account holder name.', { evidence: ev, flag: `Account holder "${holder}" only partly matches "${legal}"` }));
+      else out.push(failI('X1', `Bank account holder "${holder}" does not match the vendor (${pct(best)}). Possible payment diversion to a third party`, 'The account holder name on your bank details differs from your registered company name. Please send a bank confirmation letter on bank letterhead and, if the account belongs to another entity, a written explanation of the relationship.', { evidence: ev, flag: `Account holder is "${holder}", not "${legal}"`, internalNote: 'Account is held by a different party. Do not release payment until Compliance has confirmed the relationship by phone on a known number.' }));
+    }
+    // X2 country consistency
+    const cs = [['registered country', st.country], ['address country', s(get(sub, 'company.address.country')).toUpperCase()], ['bank country', st.bank && st.bank.country]].filter(([, v]) => v);
+    const taxLooks = detectTaxCountry(get(sub, 'tax.idValue'));
+    if (taxLooks) cs.push(['tax ID format', taxLooks]);
+    const distinct = [...new Set(cs.map(([, v]) => v))];
+    if (cs.length < 2) out.push(skip('X2', 'Not enough country signals to compare'));
+    else if (distinct.length === 1) out.push(pass('X2', `All country signals agree (${cname(distinct[0])})`, { evidence: cs.map(([k, v]) => `${k}: ${v}`) }));
+    else {
+      const odd = cs.filter(([, v]) => v !== st.country).map(([k, v]) => `${k} (${cname(v)})`);
+      out.push(failV('X2', `Country signals disagree: registered in ${cname(st.country)} but ${odd.join(', ')}`, `Your submission mixes countries: registered in ${cname(st.country)} but ${odd.join(', ')}. Please confirm the registered country and, where the bank account is in another country, explain why payments should go there.`, { evidence: cs.map(([k, v]) => `${k}: ${v}`) }));
+    }
+    // X3 PAN <-> GSTIN (India)
+    if (st.country !== 'IN') out.push(skip('X3', 'Applies to India only'));
+    else {
+      const pan = s(get(sub, 'tax.pan')).toUpperCase(), emb = st.tax && st.tax.pan;
+      if (!pan || !emb) out.push(skip('X3', 'Need a valid GSTIN and a PAN to compare'));
+      else if (pan !== emb) out.push(failV('X3', `PAN ${pan} does not match the PAN embedded in the GSTIN (${emb})`, `The PAN you gave (${pan}) is different from the PAN inside your GSTIN (${emb}). Please confirm which is correct and send the matching registration documents.`));
+      else {
+        const first = (legal.match(/[A-Za-z]/) || [''])[0].toUpperCase();
+        if (pan[3] !== 'C') out.push(note('X3', `PAN matches GSTIN, but entity type "${pan[3]}" is not a company ("C")`));
+        else if (first && pan[4] !== first) out.push(note('X3', `PAN matches GSTIN. 5th PAN character "${pan[4]}" is not the first letter of the legal name ("${first}"); common after a rename, noted`));
+        else out.push(pass('X3', `PAN ${pan} matches the one embedded in the GSTIN and is a company PAN`));
+      }
+    }
+    // document checks
+    const docs = sub.documents, req = REQUIRED_DOCS[st.country];
+    const issues = { owner: [], taxid: [], bank: [], stale: [] };
+    const submittedTax = s(get(sub, 'tax.idValue')).toUpperCase().replace(/[\s-]/g, '');
+    const acctNow = st.bank ? st.bank.acct : '';
+    for (const d of docs) {
+      const type = s(d.type), label = DOC_LABELS[type] || type;
+      if (req && !req.includes(type)) continue;
+      if (ID_DOCS.has(type) && s(d.issuedTo)) {
+        const sim = Math.max(nameSimilarity(legal, d.issuedTo), trade ? nameSimilarity(trade, d.issuedTo) : 0);
+        if (sim < NAME_MATCH) issues.owner.push({ label, issuedTo: d.issuedTo, sim });
+      }
+      if (TAX_DOCS.has(type) && s(d.taxId)) {
+        const dt = s(d.taxId).toUpperCase().replace(/[\s-]/g, '');
+        const cmp = type === 'pan_card' ? s(get(sub, 'tax.pan')).toUpperCase() : submittedTax;
+        if (cmp && dt !== cmp) issues.taxid.push({ label, onDoc: s(d.taxId), submitted: type === 'pan_card' ? s(get(sub, 'tax.pan')) : s(get(sub, 'tax.idValue')) });
+      }
+      if (BANK_DOCS.has(type)) {
+        if (s(d.issuedTo) && holder) { const sim = nameSimilarity(holder, d.issuedTo); if (sim < NAME_MATCH) issues.bank.push(`${label} is in the name "${d.issuedTo}", bank holder on the form is "${holder}"`); }
+        if (s(d.accountNumber) && acctNow) { const a = s(d.accountNumber).replace(/\s+/g, '').toUpperCase(); if (a !== acctNow.toUpperCase()) issues.bank.push(`${label} shows account ${maskAcct(a)}, form says ${maskAcct(acctNow)}`); }
+        const issued = parseDate(d.issueDate);
+        if (issued && daysBetween(st.now, issued) > BANK_LETTER_MAX_AGE_DAYS) issues.stale.push(`${label} is ${daysBetween(st.now, issued)} days old (limit ${BANK_LETTER_MAX_AGE_DAYS})`);
+      }
+      const exp = parseDate(d.expiryDate);
+      if (exp && exp < st.now) issues.stale.push(`${label} expired on ${fmtDate(exp)}`);
+    }
+    out.push(issues.owner.length ? failV('X4', `${issues.owner.map((i) => `${i.label} is issued to "${i.issuedTo}"`).join('; ')}, not "${legal}"`, `The following document(s) do not show your registered company name: ${issues.owner.map((i) => `${i.label} (shows "${i.issuedTo}")`).join('; ')}. Please send the correct document(s).`, { evidence: issues.owner.map((i) => `${i.label}: "${i.issuedTo}" vs "${legal}" (${pct(i.sim)})`) }) : pass('X4', 'Name on identity and tax documents matches the legal name'));
+    const taxMsg = issues.taxid.map((i) => `${i.label} shows ${i.onDoc}, form says ${i.submitted}`).join('; ');
+    // When F1 already asked the vendor about the tax ID (and quoted the document), do not ask twice.
+    out.push(issues.taxid.length ? failV('X5', taxMsg, st.f1DocHint ? null : `The tax ID on your documents differs from the one on the form: ${taxMsg}. Please confirm the correct number.`) : pass('X5', 'Tax ID on documents matches the form'));
+    out.push(issues.bank.length ? failV('X6', issues.bank.join('; '), `Your bank document does not match the bank details on the form: ${issues.bank.join('; ')}. Please send an up-to-date bank letter that matches.`) : pass('X6', 'Bank document matches the bank details'));
+    out.push(issues.stale.length ? failV('X7', issues.stale.join('; '), `Please replace outdated document(s): ${issues.stale.join('; ')}.`) : pass('X7', 'No expired or stale documents'));
+    return out;
+  }
+
+  /* -------- stage 5: risk -------- */
+  function stageRisk(st) {
+    const sub = st.sub, out = [], ctx = st.ctx, { legal, trade, holder } = st.names;
+    // R1 sanctions
+    const hits = [];
+    for (const [label, name] of [['legal name', legal], ['trade name', trade], ['bank account holder', holder]]) {
+      if (!name) continue;
+      for (const n of ctx.sanctions.names) { const sim = nameSimilarity(name, n); if (sim >= 0.88) hits.push({ label, name, list: n, sim }); }
+    }
+    const jur = [['registered country', st.country], ['bank country', st.bank && st.bank.country]].filter(([, c]) => c && ctx.sanctions.countries.includes(c));
+    if (hits.length || jur.length) {
+      const m = [...hits.map((h) => `${h.label} "${h.name}" matches watchlist entry "${h.list}" (${pct(h.sim)})`), ...jur.map(([k, c]) => `${k} ${cname(c)} is a restricted jurisdiction`)];
+      out.push(blocker('R1', m.join('; '), { evidence: m, internalNote: 'Watchlist hit. Do not contact the vendor about the reason. Escalate to Compliance (sanctions desk) for review within 24 hours.' }));
+    } else out.push(pass('R1', `No watchlist match across ${ctx.sanctions.names.length} entries; ${cname(st.country)} is not a restricted jurisdiction`));
+    // R2 duplicates by tax id / name
+    const taxNow = s(get(sub, 'tax.idValue')).toUpperCase().replace(/[\s-]/g, '');
+    const acctNow = (st.bank ? st.bank.acct : '').toUpperCase();
+    const byTax = taxNow ? ctx.vendorMaster.find((v) => v.taxId.toUpperCase().replace(/[\s-]/g, '') === taxNow) : null;
+    const byName = !byTax && legal ? ctx.vendorMaster.find((v) => nameSimilarity(v.legalName, legal) >= NAME_MATCH && v.country === st.country) : null;
+    const sameAcct = byTax && acctNow && v_acct(byTax) === acctNow;
+    st.matchedVendor = byTax || null;
+    if (byTax && (sameAcct || !acctNow)) out.push(blocker('R2', `Tax ID ${taxNow} is already registered as ${byTax.id} (${byTax.legalName}) with the same bank account. Duplicate submission`, { evidence: [`Existing: ${byTax.id}, onboarded ${byTax.onboarded}`], internalNote: `Duplicate of ${byTax.id}. Close this case and point the requester to the existing vendor record.` }));
+    else if (byTax) out.push(R('R2', 'info', null, `Tax ID matches existing vendor ${byTax.id} (${byTax.legalName}). Treated as an update to a known vendor, see R4`));
+    else if (byName) out.push(failI('R2', `A vendor with a near-identical name already exists: ${byName.id} (${byName.legalName}) but with a different tax ID`, 'We found an existing supplier with a very similar name. Please confirm whether you are a separate legal entity and send your registration certificate.', { evidence: [`Existing ${byName.id} tax ID ${byName.taxId}`, `Submitted tax ID ${taxNow}`], internalNote: 'Possible vendor impersonation or duplicate under a new tax ID.' }));
+    else out.push(pass('R2', `No existing vendor with this tax ID or name (checked ${ctx.vendorMaster.length} vendors)`));
+    // R3 bank reuse
+    const reuse = acctNow ? ctx.vendorMaster.find((v) => v_acct(v) === acctNow && v.id !== (byTax && byTax.id)) : null;
+    if (reuse) out.push(blocker('R3', `Bank account ${maskAcct(acctNow)} already belongs to a different vendor: ${reuse.id} (${reuse.legalName}, tax ID ${reuse.taxId})`, { flag: `Account ${maskAcct(acctNow)} already belongs to ${reuse.id} (${reuse.legalName})`, evidence: [`This submission: ${legal}, tax ID ${taxNow || 'n/a'}`, `Existing owner: ${reuse.legalName}, ${reuse.taxId}`], internalNote: `Account reuse across unrelated vendors. Alert Fraud Risk and ${reuse.id}'s relationship owner; consider this a possible attempt to redirect payments.` }));
+    else if (!acctNow) out.push(skip('R3', 'No bank account to check'));
+    else out.push(pass('R3', `Account ${maskAcct(acctNow)} is not used by any other vendor`));
+    // R4 bank change
+    if (byTax && acctNow && !sameAcct) {
+      const emailDom = s(get(sub, 'company.contactEmail')).split('@')[1] || '';
+      const masterDom = s(byTax.contactEmail).split('@')[1] || '';
+      const sig = [`Existing account ${maskAcct(v_acct(byTax))} replaced by ${maskAcct(acctNow)}`];
+      if (emailDom && masterDom && emailDom.toLowerCase() !== masterDom.toLowerCase()) sig.push(`Contact email domain changed from ${masterDom} to ${emailDom}`);
+      if (s(get(sub, 'company.contactPhone')).replace(/[\s()-]/g, '') !== s(byTax.contactPhone).replace(/[\s()-]/g, '')) sig.push('Contact phone differs from the number on file');
+      st.bankChange = { vendor: byTax, signals: sig };
+      out.push(failI('R4', `${byTax.id} (${byTax.legalName}) is asking to change bank details. ${sig.length > 1 ? 'Additional red flags: ' + sig.slice(1).join('; ') : ''}`.trim(), 'To protect your account we confirm bank detail changes by phone. A member of our team will call the number we already hold for you. No action is needed from you until then.', { flag: `${byTax.id} (${byTax.legalName}) wants to change its bank account${sig.length > 1 ? ' and contact details' : ''}`, evidence: sig, internalNote: `Call ${byTax.contactName} on the number on file (${byTax.contactPhone}), not the one in this submission. Ask them to confirm the new account. Keep the old account active until confirmed.` }));
+    } else out.push(skip('R4', byTax ? 'Same bank account as on file' : 'Not an existing vendor'));
+    return out;
+  }
+  function v_acct(v) { return s(v.bankAccount).replace(/\s+/g, '').toUpperCase(); }
+  function TAX_DOCS_ID_OK(country, id) { return !!TAX[country] && TAX[country].validate(id).ok; }
+
+  /* -------- stage 6: decision -------- */
+  function stageDecision(st) {
+    const all = st.findings, fails = all.filter((r) => r.status === 'fail'), warns = all.filter((r) => r.status === 'warn');
+    const blockers = fails.filter((r) => r.severity === 'blocker'), majors = fails.filter((r) => r.severity === 'major');
+    let status, sub, headline, next;
+    const SHORT = { R1: 'name or country is on a watchlist', R2: 'vendor already exists', R3: 'bank account already belongs to another vendor' };
+    if (blockers.length) {
+      status = 'rejected'; sub = 'compliance';
+      headline = `Blocked: ${blockers.map((b) => SHORT[b.id] || b.title.toLowerCase()).join('; ')}.`;
+      next = 'Escalated to Compliance. No payment setup. Vendor receives a neutral closure notice.';
+    } else if (majors.length) {
+      status = 'pending';
+      const esc = majors.filter((m) => m.escalate), fix = majors.filter((m) => !m.escalate);
+      const internal = esc.length > 0;
+      sub = internal ? 'internal_review' : 'awaiting_vendor';
+      headline = internal ? 'A person needs to review this before any payment.' : `Waiting on the vendor: ${plural(majors.length, 'thing')} to fix.`;
+      next = internal ? 'Held for Compliance review. Vendor receives a holding notice (plus any simple fixes).' : 'Vendor request sent. Case reopens automatically on reply and is re-checked from the start.';
+    } else {
+      status = 'approved'; sub = warns.length ? 'with_notes' : 'clean';
+      headline = warns.length ? `Approved, with ${plural(warns.length, 'small note')}.` : 'Everything checks out.';
+      next = 'Vendor created in the master and the welcome message is ready.';
+    }
+    let risk = 0;
+    // Risk reflects fraud/compliance exposure, not paperwork effort: vendor-fixable gaps score low.
+    for (const r of fails) risk += r.severity === 'blocker' ? 70 : r.escalate ? 45 : 4;
+    risk += warns.length * 2;
+    risk = Math.min(100, risk);
+    const checks = all.filter((r) => r.status !== 'info');
+    st.decision = { status, sub, headline, next, risk, counts: { checks: checks.length, pass: checks.filter((r) => r.status === 'pass').length, warn: warns.length, fail: fails.length, skip: checks.filter((r) => r.status === 'skip').length }, blockers: blockers.map((r) => r.id), majors: majors.map((r) => r.id) };
+    return [R('decision', status === 'approved' ? 'pass' : status === 'pending' ? 'warn' : 'fail', null, headline)];
+  }
+
+  /* -------- stage 7: communicate -------- */
+  const addDays = (d, n) => new Date(d.getTime() + n * DAY);
+  const wk = (d) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+  function stageCommunicate(st) {
+    const d = st.decision, sub = st.sub, c = sub.company || {}, name = s(c.contactName) || 'there';
+    // Bank-change notices go to the contact already on file, so address that person.
+    const first = (st.bankChange ? s(st.bankChange.vendor.contactName) || name : name).split(' ')[0];
+    const sign = `\nKind regards,\nVendor Onboarding\n${BUYER} Procurement`;
+    const fails = st.findings.filter((r) => r.status === 'fail');
+    const asks = [...new Set(fails.filter((r) => r.ask).map((r) => r.ask))];
+    let vendor = null, internal = null, to = s(c.contactEmail);
+    if (st.bankChange) to = s(st.bankChange.vendor.contactEmail) + '  (address on file, not the one in the submission)';
+    const ref = st.caseId;
+
+    if (d.status === 'approved') {
+      const vid = 'V-' + (Math.max(1000, ...st.ctx.vendorMaster.map((v) => +v.id.replace(/\D/g, '') || 0)) + 1);
+      st.vendorId = vid;
+      vendor = { to, subject: `Welcome to ${BUYER}: you are approved (${vid})`, body: `Hi ${first},\n\nGood news: your supplier onboarding with ${BUYER} is approved. Your vendor ID is ${vid}.\n\nWhat happens next:\n  1. Quote ${vid} on every invoice and purchase order.\n  2. Payments follow your standard terms to the account ending ${maskAcct(st.bank.acct).slice(-4)}.\n  3. Send any future bank detail changes to this address. We will always confirm them by phone.\n${sign}` };
+      internal = { to: 'Procurement Ops', priority: 'Low', subject: `${vid} created: ${s(c.legalName)}`, body: `Vendor approved automatically.\n${d.counts.pass} of ${d.counts.checks} checks passed${d.counts.warn ? `, ${d.counts.warn} note(s) logged:\n` + st.findings.filter((r) => r.status === 'warn').map((r) => `  - [${r.id}] ${r.message}`).join('\n') : '.'}\nNo action required.` };
+    } else if (d.status === 'pending' && d.sub === 'awaiting_vendor') {
+      vendor = { to, subject: `Action needed on your onboarding (ref ${ref})`, body: `Hi ${first},\n\nThanks for applying to become a supplier to ${BUYER}. We have reviewed your submission and need ${asks.length === 1 ? 'one thing' : plural(asks.length, 'thing')} before we can approve it:\n\n${asks.map((a, i) => `  ${i + 1}. ${a}`).join('\n')}\n\nPlease reply to this email with the corrections by ${wk(addDays(st.now, 14))}. Quote ${ref} and we will re-check everything straight away.\n${sign}` };
+      internal = { to: 'Procurement Ops', priority: 'Normal', subject: `${ref} waiting on vendor`, body: `Auto-requested ${plural(asks.length, 'item')} from ${s(c.legalName)}. Reminder scheduled for ${wk(addDays(st.now, 7))}. Case closes if no reply by ${wk(addDays(st.now, 14))}.\n${fails.map((r) => `  - [${r.id}] ${r.message}`).join('\n')}` };
+    } else if (d.status === 'pending') {
+      const simple = fails.filter((r) => !r.escalate && r.ask).map((r) => r.ask);
+      const holding = st.bankChange ? st.findings.find((r) => r.id === 'R4').ask : null;
+      const bankAsk = fails.find((r) => r.id === 'X1' && r.escalate);
+      vendor = { to, subject: st.bankChange ? `We will call you to confirm your bank change (ref ${ref})` : `Your onboarding is under review (ref ${ref})`, body: `Hi ${first},\n\n${st.bankChange ? `We received a request to change the bank details for your ${BUYER} supplier account.` : `Thanks for your submission to ${BUYER}. It is with our review team and we may come back to you with a question.`}\n${holding ? '\n' + holding + '\n' : ''}${bankAsk ? '\nOne item is needed now:\n  1. ' + bankAsk.ask + '\n' : ''}${simple.length ? '\nIn the meantime please also send:\n' + simple.map((a, i) => `  ${i + 1}. ${a}`).join('\n') + '\n' : ''}${sign}` };
+      const esc = fails.filter((r) => r.escalate);
+      internal = { to: st.bankChange ? 'Fraud Risk / AP Controls' : 'Compliance', priority: 'High', subject: `${ref} needs review: ${s(c.legalName)}`, body: `${d.headline}\n\nWhy:\n${esc.map((r) => `  - [${r.id}] ${r.message}${r.internalNote ? '\n      Action: ' + r.internalNote : ''}`).join('\n')}${fails.filter((r) => !r.escalate).length ? '\n\nAlso failing (vendor can fix):\n' + fails.filter((r) => !r.escalate).map((r) => `  - [${r.id}] ${r.message}`).join('\n') : ''}\n\nRisk score ${d.risk}/100. Do not release any payment to this vendor until cleared.` };
+    } else {
+      vendor = { to, subject: `Your supplier application (ref ${ref})`, body: `Hi ${first},\n\nThank you for your interest in becoming a supplier to ${BUYER}. After review, we are unable to proceed with your application at this time and are not able to share further detail.\n${sign}` };
+      internal = { to: 'Compliance', priority: 'Urgent', subject: `${ref} REJECTED: ${s(c.legalName) || 'unknown vendor'}`, body: `${d.headline}\n\n${fails.filter((r) => r.severity === 'blocker').map((r) => `  - [${r.id}] ${r.message}${r.internalNote ? '\n      Action: ' + r.internalNote : ''}`).join('\n')}\n\nThe vendor was sent a neutral closure notice that does not state the reason. Risk score ${d.risk}/100.` };
+    }
+    st.comms = { vendor, internal };
+    return [R('communicate', 'pass', null, `Drafted ${vendor ? 'vendor message' : 'no vendor message'} and internal note for ${internal.to} (${internal.priority} priority)`)];
+  }
+
+  const STAGE_FNS = { intake: stageIntake, completeness: stageCompleteness, format: stageFormat, crossref: stageCrossRef, risk: stageRisk, decision: stageDecision, communicate: stageCommunicate };
+
+  /* ============================ runner =========================== */
+  function createRun(submission, ctx, opts = {}) {
+    const sub = JSON.parse(JSON.stringify(submission || {}));
+    const st = { sub, ctx, now: opts.now || new Date(), caseId: opts.caseId || 'C-0000', findings: [], stages: [], audit: [], idx: 0 };
+    const t0 = Date.now();
+    const log = (stage, event) => st.audit.push({ t: Date.now() - t0, stage, event });
+    log('system', `Case ${st.caseId} opened, ruleset ${RULESET_VERSION}`);
+    return {
+      state: st,
+      done: () => st.idx >= STAGES.length,
+      next() {
+        if (st.idx >= STAGES.length) return null;
+        const meta = STAGES[st.idx++];
+        const checks = STAGE_FNS[meta.id](st);
+        if (!['decision', 'communicate'].includes(meta.id)) st.findings.push(...checks);
+        const res = { ...meta, checks, ms: Date.now() - t0 };
+        st.stages.push(res);
+        for (const c of checks) log(meta.id, `${c.id} ${c.status.toUpperCase()}: ${c.message}`);
+        if (meta.id === 'decision') log('decision', `Status ${st.decision.status.toUpperCase()} (risk ${st.decision.risk}/100)`);
+        return res;
+      },
+      result() {
+        return { caseId: st.caseId, submission: sub, stages: st.stages, findings: st.findings, decision: st.decision, comms: st.comms, audit: st.audit, vendorId: st.vendorId || null, bankAcct: st.bank ? st.bank.acct : '', taxValue: st.tax && st.tax.value ? st.tax.value : s(get(sub, 'tax.idValue')), matchedVendorId: st.matchedVendor ? st.matchedVendor.id : null, rulesetVersion: RULESET_VERSION, processedAt: st.now.toISOString() };
+      },
+    };
+  }
+  function runAll(submission, ctx, opts) { const r = createRun(submission, ctx, opts); while (!r.done()) r.next(); return r.result(); }
+
+  /* ======================== generator helpers ==================== */
+  const util = { gstinCheckChar, ukVatCheck, deVatCheck, abaCheckDigit, ibanCheckDigits, validateIban, nameSimilarity, fold, coreTokens };
+
+  return { RULESET_VERSION, BUYER, STAGES, RULES, DOC_LABELS, REQUIRED_DOCS, TAX, createRun, runAll, util, cname, maskAcct };
+})();
+if (typeof module !== 'undefined') module.exports = Engine;
+
+</script>
+<script>
+/* ---------------------------------------------------------------
+   Demo data: vendor master, watchlist, and the test scenarios.
+   All companies and people are fictional. Tax IDs and IBANs are
+   checksum-valid on purpose, so failures are always intentional.
+---------------------------------------------------------------- */
+const Data = (() => {
+  const iso = (d) => d.toISOString().slice(0, 10);
+  const ago = (now, n) => iso(new Date(now.getTime() - n * 86400000));
+  const ahead = (now, n) => iso(new Date(now.getTime() + n * 86400000));
+
+  const sanctions = {
+    names: ['Volga Shipping Holdings', 'Al Noor Petrochemical Trading', 'Baltic Crown Logistics'],
+    countries: ['KP', 'IR', 'SY', 'CU'],
+  };
+
+  const vendorMaster = () => [
+    { id: 'V-1001', legalName: 'Northwind Logistics Pvt Ltd', country: 'IN', taxId: '29AAECN3317F1ZL', bankAccount: '60481293015', contactName: 'Priya Menon', contactEmail: 'accounts@northwindlogistics.in', contactPhone: '+91 80 4012 3300', onboarded: '2024-03-18' },
+    { id: 'V-1002', legalName: 'Bluepeak Consulting LLC', country: 'US', taxId: '36-4417289', bankAccount: '4402918836', contactName: 'Carla Whitfield', contactEmail: 'ap@bluepeakconsulting.com', contactPhone: '+1 646 555 0119', onboarded: '2023-09-02' },
+    { id: 'V-1003', legalName: 'Hartmann Maschinenbau GmbH', country: 'DE', taxId: 'DE812345673', bankAccount: 'DE89370400440532013000', contactName: 'Stefan Hartmann', contactEmail: 'buchhaltung@hartmann-maschinenbau.de', contactPhone: '+49 89 5550 1180', onboarded: '2022-11-30' },
+    { id: 'V-1004', legalName: 'Kestrel Office Supplies Ltd', country: 'GB', taxId: 'GB123456782', bankAccount: 'GB29NWBK60161331926819', contactName: 'Helen Foster', contactEmail: 'accounts@kestreloffice.co.uk', contactPhone: '+44 20 7946 0321', onboarded: '2025-01-14' },
+  ];
+
+  function scenarios(now = new Date()) {
+    /* ---- S0 happy path: India, clean ---- */
+    const s0 = {
+      company: { legalName: 'Meridian Components Pvt. Ltd.', tradeName: '', country: 'IN', registrationNumber: 'U29299MH2016PTC284175', address: { line: 'Plot 14, MIDC Industrial Area, Chakan', city: 'Pune', postal: '410501', country: 'IN' }, website: 'meridiancomponents.in', contactName: 'Anita Deshmukh', contactEmail: 'accounts@meridiancomponents.in', contactPhone: '+91 98765 43210' },
+      tax: { idType: 'GSTIN', idValue: '27AABCM4821K1ZF', pan: 'AABCM4821K' },
+      bank: { accountHolderName: 'MERIDIAN COMPONENTS PRIVATE LIMITED', bankName: 'HDFC Bank', accountNumber: '50200041873562', ifsc: 'HDFC0001234' },
+      documents: [
+        { type: 'certificate_of_incorporation', filename: 'coi_meridian.pdf', issuedTo: 'Meridian Components Private Limited', issueDate: '2016-08-12' },
+        { type: 'gst_certificate', filename: 'gst_reg.pdf', issuedTo: 'MERIDIAN COMPONENTS PRIVATE LIMITED', taxId: '27AABCM4821K1ZF', issueDate: '2019-04-03' },
+        { type: 'pan_card', filename: 'pan.pdf', issuedTo: 'MERIDIAN COMPONENTS PRIVATE LIMITED', taxId: 'AABCM4821K', issueDate: '2016-09-01' },
+        { type: 'cancelled_cheque', filename: 'cheque.jpg', issuedTo: 'MERIDIAN COMPONENTS PRIVATE LIMITED', accountNumber: '50200041873562', issueDate: ago(now, 20) },
+      ],
+    };
+
+    /* ---- S1 approved with notes: US, bank in trade name, free-mail contact ---- */
+    const s1 = {
+      company: { legalName: 'Brightwave Analytics Inc.', tradeName: 'Brightwave Studio', country: 'US', registrationNumber: 'DE-6120934', address: { line: '2210 Mission Street, Suite 4', city: 'San Francisco', postal: '94110', country: 'US' }, website: 'brightwave.io', contactName: 'Maya Lindqvist', contactEmail: 'maya.brightwave@gmail.com', contactPhone: '+1 415 555 0142' },
+      tax: { idType: 'EIN', idValue: '47-2918364' },
+      bank: { accountHolderName: 'Brightwave Studio', bankName: 'Mercury', routingNumber: '071000136', accountNumber: '8802153377' },
+      documents: [
+        { type: 'w9', filename: 'w9_brightwave.pdf', issuedTo: 'Brightwave Analytics Inc.', taxId: '47-2918364', issueDate: ago(now, 40) },
+        { type: 'bank_letter', filename: 'mercury_letter.pdf', issuedTo: 'Brightwave Studio', accountNumber: '8802153377', issueDate: ago(now, 30) },
+      ],
+    };
+
+    /* ---- S2 edge: bank account held by a different company ---- */
+    const s2 = {
+      company: { legalName: 'Orion Freight Solutions LLC', tradeName: '', country: 'US', registrationNumber: 'IL-0897114', address: { line: '400 W Erie Street, Floor 6', city: 'Chicago', postal: '60654', country: 'US' }, website: 'orionfreight.com', contactName: 'Daniel Ruiz', contactEmail: 'daniel@orionfreight.com', contactPhone: '+1 312 555 0187' },
+      tax: { idType: 'EIN', idValue: '84-3920157' },
+      bank: { accountHolderName: 'Delta Marine Holdings Ltd', bankName: 'First Midwest Bank', routingNumber: '061000010', accountNumber: '6670142298' },
+      documents: [
+        { type: 'w9', filename: 'w9_orion.pdf', issuedTo: 'Orion Freight Solutions LLC', taxId: '84-3920157', issueDate: ago(now, 12) },
+        { type: 'bank_letter', filename: 'bank_letter.pdf', issuedTo: 'Delta Marine Holdings Ltd', accountNumber: '6670142298', issueDate: ago(now, 12) },
+      ],
+    };
+
+    /* ---- S3 edge: incomplete + wrong documents, typo in tax ID (then corrected) ---- */
+    const s3 = {
+      company: { legalName: 'Kellner Präzisionstechnik GmbH', tradeName: '', country: 'DE', registrationNumber: 'HRB 748291', address: { line: 'Industriestraße 22', city: 'Stuttgart', postal: '70565', country: 'DE' }, website: 'kellner-praezision.de', contactName: 'Jonas Becker', contactEmail: 'j.becker@kellner-praezision.de', contactPhone: '+49 711 5550 2301' },
+      tax: { idType: 'USt-IdNr', idValue: 'DE298475318' },
+      bank: { accountHolderName: 'Kellner Praezisionstechnik GmbH', bankName: 'Commerzbank', iban: 'DE44500105175407324931' },
+      documents: [
+        { type: 'vat_certificate', filename: 'ustid_bestaetigung.pdf', issuedTo: 'Kellner Präzisionstechnik GmbH', taxId: 'DE298475317', issueDate: '2021-03-04' },
+        { type: 'certificate_of_incorporation', filename: 'incorporation.pdf', issuedTo: 'Kellner Präzisionstechnik GmbH', issueDate: '2014-06-18' },
+        { type: 'bank_letter', filename: 'commerzbank_letter.pdf', issuedTo: 'Kellner Praezisionstechnik GmbH', accountNumber: 'DE44500105175407324931', issueDate: ago(now, 140) },
+      ],
+    };
+    const s3fix = JSON.parse(JSON.stringify(s3));
+    s3fix.tax.idValue = 'DE298475317';
+    s3fix.documents = [
+      s3fix.documents[0],
+      { type: 'trade_register_extract', filename: 'hr_auszug.pdf', issuedTo: 'Kellner Präzisionstechnik GmbH', issueDate: ago(now, 14) },
+      { type: 'bank_letter', filename: 'commerzbank_letter_new.pdf', issuedTo: 'Kellner Praezisionstechnik GmbH', accountNumber: 'DE44500105175407324931', issueDate: ago(now, 4) },
+    ];
+
+    /* ---- S4 edge: existing vendor changes bank details ---- */
+    const s4 = {
+      company: { legalName: 'Northwind Logistics Pvt Ltd', tradeName: '', country: 'IN', registrationNumber: 'U63090KA2011PTC059912', address: { line: '88 Whitefield Main Road', city: 'Bengaluru', postal: '560066', country: 'IN' }, website: 'northwindlogistics.in', contactName: 'Rohit Nair', contactEmail: 'rohit.nair@northwind-logistics.co', contactPhone: '+91 90000 11122' },
+      tax: { idType: 'GSTIN', idValue: '29AAECN3317F1ZL', pan: 'AAECN3317F' },
+      bank: { accountHolderName: 'Northwind Logistics Private Limited', bankName: 'Axis Bank', accountNumber: '917020058812344', ifsc: 'UTIB0000456' },
+      documents: [
+        { type: 'certificate_of_incorporation', filename: 'coi.pdf', issuedTo: 'Northwind Logistics Private Limited', issueDate: '2011-02-21' },
+        { type: 'gst_certificate', filename: 'gst.pdf', issuedTo: 'NORTHWIND LOGISTICS PRIVATE LIMITED', taxId: '29AAECN3317F1ZL', issueDate: '2018-07-02' },
+        { type: 'pan_card', filename: 'pan.pdf', issuedTo: 'NORTHWIND LOGISTICS PRIVATE LIMITED', taxId: 'AAECN3317F', issueDate: '2011-03-10' },
+        { type: 'cancelled_cheque', filename: 'new_cheque.jpg', issuedTo: 'NORTHWIND LOGISTICS PRIVATE LIMITED', accountNumber: '917020058812344', issueDate: ago(now, 9) },
+      ],
+    };
+
+    /* ---- S5 edge: account already belongs to another vendor ---- */
+    const s5 = {
+      company: { legalName: 'Cobalt Ridge Services LLC', tradeName: '', country: 'US', registrationNumber: 'TX-1930228', address: { line: '1500 Commerce Drive', city: 'Austin', postal: '78744', country: 'US' }, website: 'cobaltridgeservices.com', contactName: 'Tom Reyes', contactEmail: 'tom@cobaltridgeservices.com', contactPhone: '+1 512 555 0163' },
+      tax: { idType: 'EIN', idValue: '82-5530916' },
+      bank: { accountHolderName: 'Cobalt Ridge Services LLC', bankName: 'Chase', routingNumber: '071000136', accountNumber: '4402918836' },
+      documents: [
+        { type: 'w9', filename: 'w9.pdf', issuedTo: 'Cobalt Ridge Services LLC', taxId: '82-5530916', issueDate: ago(now, 6) },
+        { type: 'bank_letter', filename: 'chase_letter.pdf', issuedTo: 'Cobalt Ridge Services LLC', accountNumber: '4402918836', issueDate: ago(now, 6) },
+      ],
+    };
+
+    /* ---- S6 bonus: watchlist hit, everything else clean ---- */
+    const s6 = {
+      company: { legalName: 'Volga Shipping Holdings Limited', tradeName: '', country: 'GB', registrationNumber: '09871234', address: { line: '14 Harbour Quay', city: 'Southampton', postal: 'SO14 3QT', country: 'GB' }, website: 'volgashipping.co.uk', contactName: 'Alex Morrow', contactEmail: 'alex.morrow@volgashipping.co.uk', contactPhone: '+44 23 8055 0144' },
+      tax: { idType: 'VAT', idValue: 'GB987654353' },
+      bank: { accountHolderName: 'Volga Shipping Holdings Limited', bankName: 'Barclays', iban: 'GB56BARC20000040122534' },
+      documents: [
+        { type: 'certificate_of_incorporation', filename: 'coi.pdf', issuedTo: 'Volga Shipping Holdings Limited', issueDate: '2015-05-20' },
+        { type: 'vat_certificate', filename: 'vat.pdf', issuedTo: 'Volga Shipping Holdings Limited', taxId: 'GB987654353', issueDate: '2016-01-11' },
+        { type: 'bank_letter', filename: 'barclays_letter.pdf', issuedTo: 'Volga Shipping Holdings Limited', accountNumber: 'GB56BARC20000040122534', issueDate: ago(now, 18) },
+      ],
+    };
+
+    return [
+      { key: 'S0', kind: 'happy', label: 'Clean submission', short: 'Everything checks out.', blurb: 'Indian company, every field and document consistent. Bank holder is written differently (PRIVATE LIMITED vs Pvt. Ltd.) and should still match.', expect: 'approved', submission: s0 },
+      { key: 'S1', kind: 'happy', label: 'Approved with notes', short: 'Fine, with two small notes.', blurb: 'US company whose bank account is in its declared trade name, with a free-mail contact. Approved, but both facts are logged.', expect: 'approved', submission: s1 },
+      { key: 'S2', kind: 'edge', label: 'Bank in another company\u2019s name', short: 'Account holder is a different company.', blurb: 'Everything is valid except the account holder, a different company. Looks fine on the surface, a payment-diversion pattern underneath.', expect: 'pending', submission: s2 },
+      { key: 'S3', kind: 'edge', label: 'Missing and wrong documents', short: 'Typo, missing and outdated documents.', blurb: 'German vendor with a mistyped VAT ID, a missing trade register extract, and a 140-day-old bank letter. One clear request goes back to the vendor, then a corrected resubmission.', expect: 'pending', submission: s3, corrected: s3fix },
+      { key: 'S4', kind: 'edge', label: 'Existing vendor changes bank', short: 'Known vendor submits a new bank account.', blurb: 'A known vendor (V-1001) submits a new bank account from a new email domain and phone. Held for a callback to the number on file.', expect: 'pending', submission: s4 },
+      { key: 'S5', kind: 'edge', label: 'Account owned by another vendor', short: 'Bank account is already used by a vendor.', blurb: 'A new US vendor lists the exact account that V-1002 already owns. Names and documents look consistent, only the registry check catches it.', expect: 'rejected', submission: s5 },
+      { key: 'S6', kind: 'bonus', label: 'Watchlist hit', short: 'Company name is on a sanctions list.', blurb: 'UK company that is otherwise perfect but matches a sanctions watchlist entry. The vendor gets a neutral closure notice with no reason.', expect: 'rejected', submission: s6 },
+    ];
+  }
+
+  return { sanctions, vendorMaster, scenarios };
+})();
+if (typeof module !== 'undefined') module.exports = Data;
+
+</script>
+<script>
+/* ---------------------------------------------------------------
+   UI for the vendor onboarding process.
+   Views: Process (pick, run, result), Dashboard, How it works.
+---------------------------------------------------------------- */
+(function () {
+  'use strict';
+
+  /* ============================ helpers ============================ */
+  const $ = (sel, root = document) => root.querySelector(sel);
+  function h(tag, attrs, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(attrs || {})) {
+      if (v === null || v === undefined || v === false) continue;
+      if (k === 'class') el.className = v;
+      else if (k === 'html') el.innerHTML = v; // only ever called with static strings from this file
+      else if (k.startsWith('on')) el.addEventListener(k.slice(2).toLowerCase(), v);
+      else el.setAttribute(k, v === true ? '' : v);
+    }
+    for (const kid of kids.flat(Infinity)) {
+      if (kid === null || kid === undefined || kid === false) continue;
+      el.append(kid.nodeType ? kid : document.createTextNode(String(kid)));
+    }
+    return el;
+  }
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+
+  const ICONS = {
+    pass: '<svg class="ic ok" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.2"/><path d="M5.2 8.2l2 2 3.6-4"/></svg>',
+    fail: '<svg class="ic bad" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="8" r="6.2"/><path d="M5.8 5.8l4.4 4.4M10.2 5.8l-4.4 4.4"/></svg>',
+    warn: '<svg class="ic warn" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.2l6 10.6H2z"/><path d="M8 6.6v2.8M8 11.2v.1"/></svg>',
+    skip: '<svg class="ic skip" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M5.4 8h5.2"/></svg>',
+    info: '<svg class="ic info" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8" cy="8" r="6.2"/><path d="M8 7.4v3.4M8 5.2v.1"/></svg>',
+  };
+  const icon = (k) => h('span', { html: ICONS[k] || ICONS.info, style: 'display:inline-flex' });
+
+  // First sentence of a message, kept short enough to scan.
+  function brief(msg) {
+    let t = String(msg || '');
+    const m = /\.\s+[A-Z]/.exec(t.slice(40));
+    if (m) t = t.slice(0, 40 + m.index + 1);
+    return t.length > 120 ? t.slice(0, 117).trimEnd() + '…' : t;
+  }
+
+  // Turn a failed or noted check into short tagged items such as MISSING: Trade register extract.
+  const FLAG_KIND = { I1: 'MISSING', I2: 'REVIEW', C1: 'MISSING', C2: 'MISSING', F1: 'INVALID', F2: 'INVALID', F3: 'INVALID', X1: 'MISMATCH', X2: 'MISMATCH', X3: 'MISMATCH', X4: 'WRONG NAME', X5: 'MISMATCH', X6: 'MISMATCH', X7: 'OUTDATED', R1: 'BLOCKED', R2: 'BLOCKED', R3: 'BLOCKED', R4: 'REVIEW' };
+  function flagsOf(f) {
+    if (f.status === 'warn') return [{ kind: 'NOTE', text: brief(f.message) }];
+    const kind = FLAG_KIND[f.id] || 'ISSUE';
+    if (f.flag) return [{ kind, text: f.flag }];
+    if (f.id === 'C1') return (f.evidence || []).map((t) => ({ kind, text: t }));
+    if (f.id === 'C2') return (f.evidence || []).map((t) => ({ kind, text: Engine.DOC_LABELS[t] || t }));
+    if (['X4', 'X5', 'X6', 'X7'].includes(f.id)) return String(f.message).split('; ').map((t) => ({ kind, text: t }));
+    return [{ kind, text: brief(f.message) }];
+  }
+  const flagRow = (fl, tone) => h('div', { class: 'flag ' + tone }, h('span', { class: 'kindpill' }, fl.kind), h('span', { class: 'flag-text' }, fl.text));
+
+  /* ============================ state ============================== */
+  const mem = {};
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return k in mem ? mem[k] : d; } },
+    set(k, v) { mem[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage unavailable: keep in memory */ } },
+  };
+  const KEYS = { cases: 'vod.cases.v3', master: 'vod.master.v3', settings: 'vod.settings.v3', counter: 'vod.counter.v3' };
+  const SCN = Data.scenarios(new Date());
+  const state = {
+    cases: store.get(KEYS.cases, null),
+    master: store.get(KEYS.master, null),
+    settings: Object.assign({ speed: reduced ? 'fast' : 'normal', addApproved: false }, store.get(KEYS.settings, {})),
+    counter: store.get(KEYS.counter, 0),
+    view: 'process', mode: 'examples', scenarioKey: 'S0', editorText: '', modified: false, parent: null,
+    running: false, runToken: 0, filter: 'all', drawerCase: null,
+  };
+  const persist = () => { store.set(KEYS.cases, state.cases.slice(-300)); store.set(KEYS.master, state.master); store.set(KEYS.settings, state.settings); store.set(KEYS.counter, state.counter); };
+  const SPEEDS = { fast: { stage: 90, check: 0 }, normal: { stage: 380, check: 200 }, slow: { stage: 800, check: 420 } };
+  const ctx = () => ({ vendorMaster: state.master, sanctions: Data.sanctions });
+  const nextCaseId = () => 'C-' + String(++state.counter).padStart(4, '0');
+  const findCase = (id) => state.cases.find((c) => c.caseId === id);
+
+  function caseRecord(result, meta) {
+    return { caseId: result.caseId, scenarioKey: meta.scenarioKey || null, receivedAt: meta.receivedAt || new Date().toISOString(), seed: !!meta.seed, parent: meta.parent || null, attempt: meta.attempt || 1, result };
+  }
+  function seed() {
+    state.cases = []; state.master = Data.vendorMaster(); state.counter = 0;
+    const plan = [['S0', 6], ['S1', 5], ['S3', 4], ['S4', 3], ['S5', 2], ['S6', 1]];
+    const now = Date.now();
+    for (const [key, daysAgo] of plan) {
+      const sc = SCN.find((x) => x.key === key), when = new Date(now - daysAgo * 86400000 - Math.random() * 3600000);
+      const r = Engine.runAll(sc.submission, ctx(), { caseId: nextCaseId(), now: when });
+      state.cases.push(caseRecord(r, { scenarioKey: key, receivedAt: when.toISOString(), seed: true }));
+      if (key === 'S3') {
+        const when2 = new Date(now - 3 * 86400000);
+        const r2 = Engine.runAll(sc.corrected, ctx(), { caseId: nextCaseId(), now: when2 });
+        state.cases.push(caseRecord(r2, { scenarioKey: key, receivedAt: when2.toISOString(), seed: true, parent: r.caseId, attempt: 2 }));
+      }
+    }
+    persist();
+  }
+  if (!state.cases || !state.master) seed();
+
+  /* ============================ formatting ========================= */
+  function fmtWhen(iso) {
+    const m = Math.round((Date.now() - new Date(iso)) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + ' min ago';
+    if (m < 1440) return Math.round(m / 60) + ' h ago';
+    return Math.round(m / 1440) + ' d ago';
+  }
+  const statusOf = (c) => c.result.decision.status;
+  const statusLabel = (d) => d.status === 'approved' ? 'Approved' : d.status === 'rejected' ? 'Rejected' : d.sub === 'internal_review' ? 'Needs review' : 'Waiting on vendor';
+  const statusTone = (d) => (d.status === 'approved' ? 'ok' : d.status === 'pending' ? 'warn' : 'bad');
+  const riskBand = (n) => (n < 20 ? 'Low' : n < 40 ? 'Medium' : 'High');
+  const statusPill = (d) => h('span', { class: 'pill ' + statusTone(d) }, statusLabel(d));
+  const vendorName = (c) => (c.result.submission.company && c.result.submission.company.legalName) || 'Unnamed vendor';
+  const copyText = async (text, btn) => {
+    const label = btn.textContent;
+    try { await navigator.clipboard.writeText(text); btn.textContent = 'Copied'; } catch (e) { btn.textContent = 'Copy blocked here'; }
+    setTimeout(() => { btn.textContent = label; }, 1600);
+  };
+
+  /* ============================ PROCESS VIEW ======================= */
+  const viewProcess = $('#view-process');
+  const refs = {};
+
+  function buildProcess() {
+    viewProcess.textContent = '';
+    const left = h('div', { class: 'card' });
+    const right = h('div', { class: 'rightcol' });
+    viewProcess.append(h('div', { class: 'process' }, left, right));
+
+    left.append(h('div', { class: 'card-h' }, h('h2', {}, 'Vendor submission')));
+    refs.parentBanner = h('div', { class: 'banner-info', hidden: true });
+    refs.scnList = h('div', { class: 'scn-list', role: 'radiogroup', 'aria-label': 'Scenario' });
+    refs.runBtn = h('button', { class: 'btn primary wide', type: 'button', id: 'run-btn', onclick: startRun }, 'Run');
+    refs.editor = h('textarea', { class: 'editor', id: 'json-editor', spellcheck: 'false', 'aria-label': 'Submission JSON' });
+    refs.editorStatus = h('div', { class: 'editor-status' });
+    refs.editor.addEventListener('input', () => { state.editorText = refs.editor.value; state.modified = true; renderScenarios(); checkEditor(); });
+    refs.speed = h('div', { class: 'seg', role: 'group', 'aria-label': 'Run speed' });
+    const more = h('details', { class: 'fold plain' }, h('summary', {}, 'Edit the data or change speed'),
+      h('div', { class: 'fold-body' }, h('div', { class: 'row-between' }, h('span', { class: 'muted' }, 'Speed'), refs.speed), refs.editor, refs.editorStatus));
+    refs.mode = h('div', { class: 'seg modeseg', role: 'group', 'aria-label': 'Input mode' });
+    refs.exWrap = h('div', {}, refs.scnList);
+    refs.formWrap = h('div', { hidden: true });
+    left.append(h('div', { class: 'card-b' }, refs.mode, refs.parentBanner, refs.exWrap, refs.formWrap, refs.runBtn, more));
+
+    refs.result = h('div', { class: 'card result', hidden: true, 'aria-live': 'polite' });
+    refs.runHeadMeta = h('span', { class: 'muted' }, '');
+    const stagesCard = h('div', { class: 'card' }, h('div', { class: 'card-h' }, h('h2', {}, 'Live run'), refs.runHeadMeta));
+    refs.stageWrap = h('div', { class: 'stages' });
+    stagesCard.append(refs.stageWrap);
+    right.append(refs.result, stagesCard);
+    buildStages(); renderScenarios(); renderSpeed(); renderMode();
+  }
+
+  function buildStages() {
+    refs.stageWrap.textContent = '';
+    refs.stages = {};
+    Engine.STAGES.forEach((st, i) => {
+      const checks = h('div', { class: 'stage-checks' });
+      const count = h('span', { class: 'stage-count' }, '');
+      const dot = h('span', { class: 'stage-dot' }, String(i + 1));
+      const head = h('div', { class: 'stage-head', role: 'button', tabindex: '0', 'aria-expanded': 'false' }, dot, h('strong', { class: 'stage-name' }, st.name), count);
+      const el = h('section', { class: 'stage', 'data-state': 'idle' }, head, checks);
+      const toggle = () => { el.classList.toggle('open'); head.setAttribute('aria-expanded', el.classList.contains('open')); };
+      head.addEventListener('click', toggle);
+      head.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
+      refs.stages[st.id] = { el, checks, count, dot, head, idx: i + 1 };
+      refs.stageWrap.append(el);
+    });
+  }
+
+  function renderScenarios() {
+    refs.scnList.textContent = '';
+    for (const sc of SCN) {
+      const sel = sc.key === state.scenarioKey;
+      refs.scnList.append(h('button', { class: 'scn', type: 'button', role: 'radio', 'aria-checked': String(sel), onclick: () => loadScenario(sc.key) },
+        h('span', { class: 'kind ' + sc.kind }, sc.kind === 'happy' ? 'OK' : sc.kind === 'edge' ? 'Edge' : 'Bonus'),
+        h('span', { class: 'lab' }, h('span', {}, sc.label), sel ? h('span', { class: 'sub' }, state.modified ? 'Edited. ' + sc.short : sc.short) : null)));
+    }
+  }
+  function renderSpeed() {
+    refs.speed.textContent = '';
+    for (const k of ['fast', 'normal', 'slow']) refs.speed.append(h('button', { type: 'button', 'aria-pressed': String(state.settings.speed === k), onclick: () => { state.settings.speed = k; persist(); renderSpeed(); } }, k[0].toUpperCase() + k.slice(1)));
+  }
+  function parseEditor() { try { const v = JSON.parse(state.editorText); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('The submission must be a JSON object.'); return { ok: true, value: v }; } catch (e) { return { ok: false, error: e.message }; } }
+  function checkEditor() {
+    const p = parseEditor();
+    refs.editorStatus.textContent = '';
+    refs.editorStatus.append(p.ok ? h('span', { class: 'muted' }, 'Valid JSON') : h('span', { style: 'color:var(--bad)' }, 'Invalid JSON: ' + p.error));
+    refs.runBtn.disabled = state.running || !p.ok;
+  }
+  function setEditor(obj, opts = {}) {
+    state.editorText = JSON.stringify(obj, null, 2);
+    state.modified = !!opts.modified;
+    if (opts.key !== undefined) state.scenarioKey = opts.key;
+    if ('parent' in opts) state.parent = opts.parent;
+    refs.editor.value = state.editorText;
+    renderScenarios(); checkEditor(); renderParentBanner();
+    if (refs.formWrap && state.mode === 'form') renderForm();
+  }
+  function loadScenario(key) {
+    if (state.running) return;
+    const sc = SCN.find((x) => x.key === key);
+    setEditor(JSON.parse(JSON.stringify(sc.submission)), { key, parent: null });
+  }
+  function renderParentBanner() {
+    refs.parentBanner.textContent = '';
+    refs.parentBanner.hidden = !state.parent;
+    if (state.parent) refs.parentBanner.append(icon('info'), h('span', {}, `Resubmitting ${state.parent}`));
+  }
+
+
+  /* ----- input mode and the submission form ----- */
+  function renderMode() {
+    refs.mode.textContent = '';
+    for (const [k, l] of [['examples', 'Examples'], ['form', 'Form']]) refs.mode.append(h('button', { type: 'button', 'aria-pressed': String(state.mode === k), onclick: () => setMode(k) }, l));
+    refs.exWrap.hidden = state.mode !== 'examples';
+    refs.formWrap.hidden = state.mode !== 'form';
+  }
+  function setMode(m) { state.mode = m; renderMode(); if (m === 'form') renderForm(); }
+
+  const COUNTRIES = [['IN', 'India'], ['US', 'United States'], ['GB', 'United Kingdom'], ['DE', 'Germany'], ['SG', 'Singapore (no ruleset yet)']];
+  const ID_TYPE = { IN: 'GSTIN', US: 'EIN', GB: 'VAT', DE: 'USt-IdNr' };
+  const TAX_TYPES = ['gst_certificate', 'vat_certificate', 'w9', 'pan_card'], BANK_TYPES = ['bank_letter', 'cancelled_cheque'];
+  const blankSubmission = () => ({ company: { legalName: '', tradeName: '', country: 'IN', registrationNumber: '', address: { line: '', city: '', postal: '', country: 'IN' }, website: '', contactName: '', contactEmail: '', contactPhone: '' }, tax: { idType: 'GSTIN', idValue: '', pan: '' }, bank: { accountHolderName: '', bankName: '', accountNumber: '', ifsc: '' }, documents: [] });
+  const getp = (o, path) => path.split('.').reduce((a, k) => (a == null ? undefined : a[k]), o);
+  function setp(o, path, v) { const ks = path.split('.'); let cur = o; for (const k of ks.slice(0, -1)) { if (!cur[k] || typeof cur[k] !== 'object') cur[k] = {}; cur = cur[k]; } cur[ks[ks.length - 1]] = v; }
+  let formObj = null;
+  function syncFromForm() {
+    state.editorText = JSON.stringify(formObj, null, 2); state.modified = true;
+    refs.editor.value = state.editorText; renderScenarios(); checkEditor();
+  }
+  function fld(label, path, opts = {}) {
+    const input = h('input', { type: opts.type || 'text', value: String(getp(formObj, path) ?? ''), 'aria-label': label, autocomplete: 'off', spellcheck: 'false', placeholder: opts.placeholder || '' });
+    input.addEventListener('input', () => { setp(formObj, path, input.value); syncFromForm(); });
+    return h('label', { class: 'fld' + (opts.wide ? ' wide' : '') }, h('span', {}, label), input);
+  }
+  function renderForm() {
+    const wrap = refs.formWrap; wrap.textContent = '';
+    const p = parseEditor();
+    if (!p.ok) { wrap.append(h('p', { style: 'color:var(--bad)' }, 'The data is not valid JSON, so the form cannot show it. Fix it under "Edit the data", or start blank.'), h('button', { class: 'btn sm', type: 'button', onclick: () => { setEditor(blankSubmission(), { key: 'custom', parent: null }); } }, 'Start blank')); return; }
+    formObj = p.value;
+    for (const k of ['company', 'tax', 'bank']) if (!formObj[k] || typeof formObj[k] !== 'object') formObj[k] = {};
+    if (!formObj.company.address || typeof formObj.company.address !== 'object') formObj.company.address = {};
+    if (!Array.isArray(formObj.documents)) formObj.documents = [];
+    const cc = String(formObj.company.country || '').toUpperCase();
+
+    const fileInput = h('input', { type: 'file', accept: '.json,application/json', class: 'sr', id: 'file-in', onchange: (e) => { const f = e.target.files[0]; if (!f) return; const rd = new FileReader(); rd.onload = () => { try { const v = JSON.parse(rd.result); if (!v || typeof v !== 'object' || Array.isArray(v)) throw new Error('not an object'); setEditor(v, { key: 'custom', parent: null }); } catch (err) { wrap.prepend(h('p', { class: 'form-err' }, 'That file is not a valid submission: ' + err.message)); } }; rd.readAsText(f); e.target.value = ''; } });
+    wrap.append(h('div', { class: 'form-tools' },
+      h('button', { class: 'btn sm', type: 'button', onclick: () => setEditor(blankSubmission(), { key: 'custom', parent: null }) }, 'Start blank'),
+      h('label', { class: 'btn sm', for: 'file-in', tabindex: '0', role: 'button', onkeydown: (e) => { if (e.key === 'Enter') fileInput.click(); } }, 'Upload JSON'), fileInput,
+      h('span', { class: 'muted' }, 'Leave a field empty to see it flagged.')));
+
+    const country = h('select', { 'aria-label': 'Country of registration' }, COUNTRIES.map(([c, n]) => h('option', { value: c }, n)));
+    if (!COUNTRIES.some(([c]) => c === cc)) country.append(h('option', { value: cc }, cc || 'Choose…'));
+    country.value = cc || 'IN';
+    country.addEventListener('change', () => { formObj.company.country = country.value; formObj.company.address.country = country.value; if (ID_TYPE[country.value]) formObj.tax.idType = ID_TYPE[country.value]; syncFromForm(); renderForm(); });
+
+    wrap.append(h('h4', { class: 'fh' }, 'Company'),
+      h('div', { class: 'form-grid' },
+        fld('Legal name', 'company.legalName', { wide: true }), fld('Trade name (optional)', 'company.tradeName', { wide: true }),
+        h('label', { class: 'fld' }, h('span', {}, 'Country'), country), fld('Website', 'company.website', { placeholder: 'example.com' }),
+        fld('Address', 'company.address.line', { wide: true }), fld('City', 'company.address.city'), fld('Postal code', 'company.address.postal'),
+        fld('Contact name', 'company.contactName'), fld('Contact phone', 'company.contactPhone', { placeholder: '+91 …' }), fld('Contact email', 'company.contactEmail', { wide: true })),
+      h('h4', { class: 'fh' }, 'Tax'),
+      h('div', { class: 'form-grid' }, fld((ID_TYPE[cc] || 'Tax') + ' number', 'tax.idValue', { wide: cc !== 'IN' }), cc === 'IN' ? fld('PAN', 'tax.pan') : null),
+      h('h4', { class: 'fh' }, 'Bank'),
+      h('div', { class: 'form-grid' }, fld('Account holder name', 'bank.accountHolderName', { wide: true }), fld('Bank name', 'bank.bankName', { wide: true }),
+        cc === 'GB' || cc === 'DE' ? fld('IBAN', 'bank.iban', { wide: true })
+          : [fld('Account number', 'bank.accountNumber'), cc === 'IN' ? fld('IFSC', 'bank.ifsc') : cc === 'US' ? fld('Routing number', 'bank.routingNumber') : null]));
+
+    // documents
+    const today = Date.now();
+    const iso = (d) => new Date(d).toISOString().slice(0, 10);
+    const addRequired = () => {
+      const f = formObj, have = new Set(f.documents.map((d) => d.type)), holder = f.bank.accountHolderName || f.company.legalName, acct = f.bank.iban || f.bank.accountNumber || '';
+      for (const t of Engine.REQUIRED_DOCS[cc] || []) {
+        if (have.has(t)) continue;
+        const d = { type: t, filename: t + '.pdf', issuedTo: BANK_TYPES.includes(t) ? holder : f.company.legalName, issueDate: iso(today - 10 * 86400000) };
+        if (TAX_TYPES.includes(t)) d.taxId = t === 'pan_card' ? f.tax.pan || '' : f.tax.idValue || '';
+        if (BANK_TYPES.includes(t)) d.accountNumber = acct;
+        f.documents.push(d);
+      }
+      syncFromForm(); renderForm();
+    };
+    const typeSel = h('select', { 'aria-label': 'Document type to add' }, h('option', { value: '' }, 'Add a document…'), Object.entries(Engine.DOC_LABELS).map(([k, l]) => h('option', { value: k }, l)));
+    typeSel.addEventListener('change', () => { if (!typeSel.value) return; formObj.documents.push({ type: typeSel.value, filename: typeSel.value + '.pdf', issuedTo: formObj.company.legalName || '', issueDate: iso(today - 10 * 86400000) }); syncFromForm(); renderForm(); });
+    wrap.append(h('h4', { class: 'fh' }, `Documents (${formObj.documents.length})`),
+      h('div', { class: 'form-tools' }, Engine.REQUIRED_DOCS[cc] ? h('button', { class: 'btn sm', type: 'button', onclick: addRequired }, 'Add the required documents') : null, typeSel),
+      ...formObj.documents.map((d, i) => {
+        const dp = (key) => { const inp = h('input', { type: key.includes('Date') ? 'date' : 'text', value: String(d[key] ?? ''), 'aria-label': key }); inp.addEventListener('input', () => { d[key] = inp.value; syncFromForm(); }); return inp; };
+        const lab = (t, key) => h('label', { class: 'fld' }, h('span', {}, t), dp(key));
+        return h('div', { class: 'docrow' }, h('div', { class: 'docrow-h' }, h('b', {}, Engine.DOC_LABELS[d.type] || d.type), h('button', { class: 'linkbtn', type: 'button', onclick: () => { formObj.documents.splice(i, 1); syncFromForm(); renderForm(); } }, 'Remove')),
+          h('div', { class: 'form-grid' }, lab('Name on document', 'issuedTo'), lab('Issue date', 'issueDate'),
+            TAX_TYPES.includes(d.type) ? lab('Tax ID on document', 'taxId') : null, BANK_TYPES.includes(d.type) ? lab('Account on document', 'accountNumber') : null));
+      }));
+  }
+
+  /* ----- run ----- */
+  function resetStages() {
+    for (const s of Object.values(refs.stages)) { s.el.dataset.state = 'idle'; s.el.classList.remove('open'); s.checks.textContent = ''; s.count.textContent = ''; s.dot.textContent = String(s.idx); s.head.setAttribute('aria-expanded', 'false'); }
+  }
+  function stageState(checks) {
+    if (checks.some((c) => c.status === 'fail' && c.severity === 'blocker')) return 'block';
+    if (checks.some((c) => c.status === 'fail')) return 'action';
+    if (checks.some((c) => c.status === 'warn')) return 'note';
+    return 'ok';
+  }
+  function checkRow(c) {
+    const quiet = c.id === 'decision' || c.id === 'communicate' || c.id === 'I3';
+    const text = c.id === 'decision' ? c.message : c.id === 'communicate' ? 'Vendor email and team note drafted' : c.id === 'I3' ? 'Names normalised' : c.title;
+    const flags = !quiet && (c.status === 'fail' || c.status === 'warn') ? flagsOf(c) : [];
+    const tone = c.status === 'warn' ? 'note' : c.severity === 'blocker' ? 'block' : c.escalate ? 'review' : 'fix';
+    return h('div', { class: 'ck ' + c.status }, icon(c.status === 'info' ? 'pass' : c.status), h('div', {}, h('div', { class: 'ck-t' }, text), flags.length ? h('div', { class: 'flags' }, flags.map((f) => flagRow(f, tone))) : null));
+  }
+
+  async function startRun() {
+    if (state.running) return;
+    const p = parseEditor(); if (!p.ok) return;
+    const token = ++state.runToken;
+    state.running = true; refs.runBtn.disabled = true; refs.runBtn.textContent = 'Running…';
+    refs.result.hidden = true; resetStages();
+    const caseId = nextCaseId();
+    const run = Engine.createRun(p.value, ctx(), { caseId, now: new Date() });
+    const sp = SPEEDS[state.settings.speed];
+    refs.runHeadMeta.textContent = caseId;
+    while (!run.done()) {
+      if (token !== state.runToken) return;
+      const meta = Engine.STAGES[run.state.idx], s = refs.stages[meta.id];
+      s.el.dataset.state = 'running'; s.el.classList.add('open'); s.head.setAttribute('aria-expanded', 'true');
+      s.count.textContent = 'running…';
+      await sleep(sp.stage);
+      const res = run.next();
+      for (const c of res.checks) { s.checks.append(checkRow(c)); if (sp.check) await sleep(sp.check); }
+      const real = res.checks.filter((c) => c.status !== 'info' && c.id !== 'decision' && c.id !== 'communicate');
+      const nFail = real.filter((c) => c.status === 'fail').length, nWarn = real.filter((c) => c.status === 'warn').length;
+      s.count.textContent = nFail ? plural(nFail, 'issue') : nWarn ? plural(nWarn, 'note') : real.length ? 'clear' : 'done';
+      s.el.dataset.state = meta.id === 'decision' || meta.id === 'communicate' ? 'ok' : stageState(res.checks);
+      const st = s.el.dataset.state;
+      s.dot.textContent = st === 'ok' || st === 'note' ? '✓' : st === 'action' ? '!' : st === 'block' ? '×' : String(s.idx);
+      if ((st === 'ok' || st === 'note') && meta.id !== 'decision') { s.el.classList.remove('open'); s.head.setAttribute('aria-expanded', 'false'); }
+    }
+    if (token !== state.runToken) return;
+    const result = run.result();
+    const parent = state.parent ? findCase(state.parent) : null;
+    const rec = caseRecord(result, { scenarioKey: state.scenarioKey, parent: parent ? parent.caseId : null, attempt: parent ? parent.attempt + 1 : 1 });
+    state.cases.push(rec);
+    if (result.decision.status === 'approved' && state.settings.addApproved) {
+      const c = result.submission.company;
+      state.master.push({ id: result.vendorId, legalName: c.legalName, country: c.country, taxId: result.taxValue, bankAccount: result.bankAcct, contactName: c.contactName, contactEmail: c.contactEmail, contactPhone: c.contactPhone, onboarded: new Date().toISOString().slice(0, 10) });
+    }
+    persist(); updateNav();
+    state.running = false; refs.runBtn.textContent = 'Run'; checkEditor();
+    state.parent = null; renderParentBanner();
+    showResult(rec);
+    renderDashboard();
+  }
+
+  function showResult(rec) {
+    refs.result.textContent = '';
+    refs.result.append(...resultNodes(rec, { onResubmit: true }));
+    refs.result.hidden = false;
+    if (!reduced) refs.result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  /* ----- result rendering (shared with the dashboard drawer) ----- */
+  const fold = (title, ...body) => h('details', { class: 'fold' }, h('summary', {}, title), h('div', { class: 'fold-body' }, body));
+
+  function resultNodes(rec, opts = {}) {
+    const r = rec.result, d = r.decision, tone = statusTone(d);
+    const nodes = [];
+    const sub = d.status === 'pending' ? statusLabel(d) : d.status === 'approved' && d.sub === 'with_notes' ? 'With notes' : '';
+    nodes.push(h('div', { class: 'verdict ' + tone },
+      h('div', {}, sub ? h('div', { class: 'sub' }, sub) : null, h('div', { class: 'big' }, d.status[0].toUpperCase() + d.status.slice(1)), h('p', { class: 'headline' }, d.headline)),
+      h('div', { class: 'meta' }, h('span', { class: 'mono' }, rec.caseId + (rec.attempt > 1 ? ' · attempt ' + rec.attempt : '')), h('span', {}, 'Risk ' + d.risk + ' · ' + riskBand(d.risk)), r.vendorId ? h('span', { class: 'mono' }, r.vendorId) : null)));
+
+    const diff = attemptDiff(rec);
+    if (diff) nodes.push(diff);
+
+    const fails = r.findings.filter((x) => x.status === 'fail');
+    const groups = [
+      ['block', 'Why it was rejected', fails.filter((x) => x.severity === 'blocker')],
+      ['review', 'Needs a person to check', fails.filter((x) => x.severity !== 'blocker' && x.escalate)],
+      ['fix', 'Needed from the vendor', fails.filter((x) => x.severity !== 'blocker' && !x.escalate)],
+      ['note', 'Notes', r.findings.filter((x) => x.status === 'warn')],
+    ].filter(([, , list]) => list.length);
+    if (groups.length) {
+      nodes.push(h('div', { class: 'alerts' }, groups.map(([tone, title, list]) =>
+        h('section', { class: 'alert ' + tone }, h('h3', { class: 'alert-h' }, title), h('div', { class: 'flags' }, list.flatMap((x) => flagsOf(x)).map((f) => flagRow(f, tone)))))));
+    }
+    if (opts.onResubmit && d.sub === 'awaiting_vendor') {
+      const sc = SCN.find((x) => x.key === rec.scenarioKey);
+      if (sc && sc.corrected) nodes.push(h('div', { class: 'sect' }, h('button', { class: 'btn primary', type: 'button', onclick: () => resubmit(rec) }, 'Simulate the vendor’s corrected reply')));
+    }
+
+    const cm = r.comms || {};
+    const mail = (m) => m ? h('div', { class: 'mail' },
+      h('div', { class: 'mail-h' }, h('div', {}, h('span', { class: 'k' }, 'To'), m.to), h('div', {}, h('span', { class: 'k' }, 'Subject'), m.subject)),
+      h('pre', {}, m.body),
+      h('div', { class: 'mail-f' }, h('span', {}, 'Draft only, nothing is sent'), h('button', { class: 'btn sm', type: 'button', onclick: (e) => copyText(`To: ${m.to}\nSubject: ${m.subject}\n\n${m.body}`, e.currentTarget) }, 'Copy'))) : null;
+    const nChecks = r.findings.filter((x) => x.status !== 'info').length;
+    nodes.push(h('div', { class: 'folds' },
+      fold('Email to the vendor', mail(cm.vendor)),
+      fold('Note for our team', mail(cm.internal)),
+      fold(`All ${nChecks} checks`, h('div', { class: 'plist' }, r.findings.filter((x) => x.status !== 'info').map((x) => h('div', { class: 'ck ' + x.status }, icon(x.status), h('div', {}, h('div', { class: 'ck-t' }, x.title), h('div', { class: 'ck-d' }, brief(x.message))))))),
+      fold('Audit trail', h('table', { class: 'audit' }, h('tbody', {}, r.audit.map((a) => h('tr', {}, h('td', {}, '+' + a.t + 'ms'), h('td', {}, a.stage), h('td', {}, a.event))))),
+        h('div', { style: 'margin-top:10px' }, h('button', { class: 'btn sm', type: 'button', onclick: (e) => copyText(JSON.stringify(rec, null, 2), e.currentTarget) }, 'Copy case as JSON')))));
+    return nodes.filter(Boolean);
+  }
+
+  function attemptDiff(rec) {
+    if (!rec.parent) return null;
+    const prev = findCase(rec.parent); if (!prev) return null;
+    const was = Object.fromEntries(prev.result.findings.map((f) => [f.id, f.status]));
+    const fixed = rec.result.findings.filter((f) => was[f.id] === 'fail' && f.status !== 'fail').length;
+    return h('div', { class: 'diff' }, `Fixed ${plural(fixed, 'issue')} from ${prev.caseId}.`);
+  }
+
+  function resubmit(rec) {
+    closeDrawer(); go('process');
+    const sc = SCN.find((x) => x.key === rec.scenarioKey);
+    if (!sc || !sc.corrected) return;
+    setEditor(JSON.parse(JSON.stringify(sc.corrected)), { key: rec.scenarioKey, parent: rec.caseId });
+    startRun();
+  }
+
+  /* ============================ DASHBOARD ========================== */
+  const viewDash = $('#view-dashboard');
+  function renderDashboard() {
+    const cs = state.cases, total = cs.length;
+    const n = (st) => cs.filter((c) => statusOf(c) === st).length;
+    const kpi = (l, v, cls) => h('div', { class: 'card kpi ' + (cls || '') }, h('div', { class: 'v' }, v), h('div', { class: 'l' }, l));
+    const shown = cs.filter((c) => state.filter === 'all' || statusOf(c) === state.filter).slice().reverse();
+    const fbtn = (k, l, c) => h('button', { type: 'button', 'aria-pressed': String(state.filter === k), onclick: () => { state.filter = k; renderDashboard(); } }, `${l} ${c}`);
+    viewDash.textContent = '';
+    viewDash.append(
+      h('div', { class: 'page-h' }, h('h1', {}, 'Dashboard')),
+      h('div', { class: 'kpis' }, kpi('Cases', total), kpi('Approved', n('approved'), 'ok'), kpi('Pending', n('pending'), 'warn'), kpi('Rejected', n('rejected'), 'bad')),
+      h('div', { class: 'card' },
+        h('div', { class: 'filters' }, fbtn('all', 'All', total), fbtn('approved', 'Approved', n('approved')), fbtn('pending', 'Pending', n('pending')), fbtn('rejected', 'Rejected', n('rejected'))),
+        shown.length ? h('div', { class: 'twrap' }, h('table', { class: 'cases' },
+          h('thead', {}, h('tr', {}, ['Case', 'Vendor', 'Status', 'Main reason', 'When'].map((x) => h('th', { scope: 'col' }, x)))),
+          h('tbody', {}, shown.map((c) => {
+            const d = c.result.decision, first = c.result.findings.find((f) => f.status === 'fail') || c.result.findings.find((f) => f.status === 'warn');
+            const open = () => openDrawer(c.caseId);
+            return h('tr', { tabindex: '0', onclick: open, onkeydown: (e) => { if (e.key === 'Enter') open(); } },
+              h('td', {}, h('span', { class: 'chip' }, c.caseId), c.attempt > 1 ? h('span', { class: 'tag' }, 'attempt ' + c.attempt) : null),
+              h('td', {}, vendorName(c)), h('td', {}, statusPill(d)),
+              h('td', { class: 'cell-main' }, d.status === 'approved' ? (d.sub === 'with_notes' ? 'Passed, with notes' : 'All checks passed') : first ? first.title : 'All checks passed'),
+              h('td', { class: 'muted' }, fmtWhen(c.receivedAt)));
+          })))) : h('div', { class: 'empty' }, 'No cases yet.')));
+  }
+
+  /* ---- drawer ---- */
+  const drawerRoot = $('#drawer-root');
+  function openDrawer(id) {
+    const rec = findCase(id); if (!rec) return;
+    state.drawerCase = id;
+    drawerRoot.textContent = '';
+    const closeBtn = h('button', { class: 'btn sm', type: 'button', onclick: closeDrawer }, 'Close');
+    drawerRoot.append(h('div', { class: 'scrim', onclick: closeDrawer }), h('aside', { class: 'drawer', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Case ' + id },
+      h('div', { class: 'drawer-h' }, h('b', {}, vendorName(rec)), closeBtn),
+      h('div', { class: 'drawer-b' }, h('div', { class: 'card result' }, ...resultNodes(rec, { onResubmit: true })))));
+    closeBtn.focus();
+  }
+  function closeDrawer() { state.drawerCase = null; drawerRoot.textContent = ''; }
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && state.drawerCase) closeDrawer(); });
+
+  /* ============================ HOW IT WORKS ======================= */
+  const viewMap = $('#view-process-map');
+  function renderMap() {
+    const label = { reject: 'Reject', 'pending-vendor': 'Ask vendor', 'pending-internal': 'Send to review', note: 'Note only' };
+    viewMap.textContent = '';
+    viewMap.append(
+      h('div', { class: 'page-h' }, h('h1', {}, 'How it works')),
+      h('div', { class: 'flow' }, Engine.STAGES.map((s, i) => h('div', { class: 'st' }, h('span', { class: 'no' }, i + 1), h('b', {}, s.name)))),
+      h('div', { class: 'card', style: 'margin-bottom:16px' }, h('div', { class: 'card-b' }, h('div', { class: 'decision-rows' },
+        h('div', {}, h('span', { class: 'pill bad' }, 'Rejected'), h('span', {}, 'A hard rule fails: watchlist, duplicate vendor, or a bank account owned by another vendor.')),
+        h('div', {}, h('span', { class: 'pill warn' }, 'Pending'), h('span', {}, 'Something is wrong. The vendor can fix it, or a person must review it.')),
+        h('div', {}, h('span', { class: 'pill ok' }, 'Approved'), h('span', {}, 'No failures. Small notes are logged.'))))),
+      h('div', { class: 'card', style: 'margin-bottom:16px' }, h('div', { class: 'card-h' }, h('h2', {}, 'Rules'), h('span', { class: 'muted' }, `${Engine.RULES.length} checks`)), h('div', { class: 'card-b twrap' },
+        h('table', { class: 'mini' }, h('tbody', {}, Engine.RULES.map((r) => h('tr', {}, h('td', {}, r.title), h('td', { style: 'text-align:right' }, h('span', { class: 'onfail ' + r.onFail }, label[r.onFail])))))))),
+      h('div', { class: 'card' }, h('div', { class: 'card-b' }, h('details', { class: 'fold plain' }, h('summary', {}, 'Assumptions'), h('div', { class: 'fold-body' }, h('div', { class: 'prose' }, h('ul', {},
+        h('li', {}, 'Rules decide, not a model, so every verdict can be audited.'),
+        h('li', {}, 'Documents arrive as already-extracted fields.'),
+        h('li', {}, 'Full rules for India, US, UK and Germany. Other countries go to a person.'),
+        h('li', {}, 'Vendor master and watchlist are fictional demo data.'),
+        h('li', {}, 'Nothing is emailed. Data stays in this browser.'))))))));
+  }
+
+  /* ============================ shell ============================== */
+  const views = { process: viewProcess, dashboard: viewDash, 'process-map': viewMap };
+  function go(v) {
+    state.view = v;
+    for (const [k, el] of Object.entries(views)) el.hidden = k !== v;
+    document.querySelectorAll('.nav button').forEach((b) => (b.dataset.view === v ? b.setAttribute('aria-current', 'page') : b.removeAttribute('aria-current')));
+    if (v === 'dashboard') renderDashboard();
+    if (location.hash !== '#' + v) { try { history.replaceState(null, '', '#' + v); } catch (e) { location.hash = v; } }
+    window.scrollTo(0, 0);
+  }
+  function updateNav() { $('#nav-count').textContent = state.cases.length; }
+  document.querySelectorAll('.nav button').forEach((b) => b.addEventListener('click', () => go(b.dataset.view)));
+  window.addEventListener('hashchange', () => { const v = location.hash.slice(1); if (views[v] && v !== state.view) go(v); });
+
+  const resetBtn = $('#reset-btn'); let resetTimer = null;
+  resetBtn.addEventListener('click', () => {
+    if (!resetBtn.dataset.armed) { resetBtn.dataset.armed = '1'; resetBtn.textContent = 'Click again to confirm'; resetTimer = setTimeout(() => { delete resetBtn.dataset.armed; resetBtn.textContent = 'Reset demo'; }, 3500); return; }
+    clearTimeout(resetTimer); delete resetBtn.dataset.armed; resetBtn.textContent = 'Reset demo';
+    state.runToken++; state.running = false; state.parent = null;
+    seed(); updateNav(); closeDrawer(); buildProcess(); loadScenario('S0'); renderDashboard();
+  });
+
+  buildProcess(); renderMap(); renderDashboard(); updateNav();
+  loadScenario('S0');
+  const start = location.hash.slice(1);
+  go(views[start] ? start : 'process');
+
+  window.__vod = { state, startRun, loadScenario, go, openDrawer };
+})();
+
+</script>
+</body>
+</html>
